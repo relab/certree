@@ -1,0 +1,8 @@
+*.swp
+*.swo
+
+# truffle build directory
+build/
+
+# Dependency directory
+node_modules/

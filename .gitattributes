@@ -1,0 +1,2 @@
+# Help github to recongnize .sol files
+*.sol linguist-language=Solidity
