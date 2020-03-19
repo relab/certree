@@ -34,6 +34,13 @@ abstract contract AccountableIssuer is Issuer {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    /**
+     * @return the length of the issuers array
+     */
+    function issuersLength() public view returns (uint256) {
+        return issuers.length;
+    }
+
     function addIssuer(address issuerAddress) onlyOwner public {
         require(!isIssuer[issuerAddress], "AccountableIssuer: issuer already added");
         // TODO: check if is an issuer contract before add it?

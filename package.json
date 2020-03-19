@@ -1,5 +1,5 @@
 {
-  "name": "bbchain_contracts",
+  "name": "bbchain-contracts",
   "version": "0.0.1",
   "description": "Ethereum Contracts for BBChain project",
   "directories": {
