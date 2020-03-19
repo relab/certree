@@ -32,7 +32,7 @@ function makeRoot(certs) {
 }
 
 contract('AccountableIssuer', accounts => {
-    const [issuer1, issuer2, subject, other] = accounts;
+    const [issuer1, issuer2, issuer3, subject, other] = accounts;
     let acIssuer, issuer, issuerAddress = null;
     const digest = web3.utils.keccak256(web3.utils.toHex('root-certificates'));
 
@@ -86,8 +86,8 @@ contract('AccountableIssuer', accounts => {
         let expectedRoot = null;
 
         beforeEach(async () => {
-            acIssuer = await AccountableIssuer.new([issuer1], 1);
-            ({ issuerAddresses, aggregationsPerIssuer, certsPerIssuer } = await generateCredentials(acIssuer, 2, issuer1, [issuer2], subject));
+            acIssuer = await AccountableIssuer.new([issuer1, issuer2], 2);
+            ({ issuerAddresses, aggregationsPerIssuer, certsPerIssuer } = await generateCredentials(acIssuer, 2, issuer1, [issuer3], subject));
             aggregationsPerIssuer.push(digest);
             expectedRoot = makeRoot(aggregationsPerIssuer);
         });
@@ -99,6 +99,20 @@ contract('AccountableIssuer', accounts => {
 
             let rootCertificate = (await acIssuer.digestsBySubject(subject))[0];
             (rootCertificate).should.equal(digest);
+        });
+
+        it('should confirm a root credential', async () => {
+            await acIssuer.methods["registerCredential(address,bytes32,bytes32,address[])"](subject, digest, expectedRoot, issuerAddresses, { from: issuer1 });
+
+            let rootCertificate = (await acIssuer.digestsBySubject(subject))[0];
+            (rootCertificate).should.equal(digest);
+
+            (await acIssuer.certified(digest)).should.equal(false);
+
+            await acIssuer.registerCredential(subject, digest, { from: issuer2 });
+            await acIssuer.confirmCredential(digest, { from: subject });
+
+            (await acIssuer.certified(digest)).should.equal(true);
         });
 
         it('should revert if the given root doesn\'t match', async () => {

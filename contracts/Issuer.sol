@@ -170,8 +170,6 @@ abstract contract Issuer is IssuerInterface, Owners {
         virtual
         onlyOwner
     {
-        // TODO: this is really the case? Or will still possible to issue credentials after aggregation?
-        require(aggregatedProofs.proofs(subject) == bytes32(0), "Issuer: credentials already aggregated, not possible to issue new credentials");
         _issue(subject, digest);
         emit CredentialSigned(msg.sender, digest, block.number);
     }
