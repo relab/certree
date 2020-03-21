@@ -43,6 +43,7 @@ contract Owners {
     }
 
     /**
+     * @dev OwnersLength
      * @return the length of the owners array
      */
     function ownersLength() public view returns (uint256) {
@@ -50,7 +51,7 @@ contract Owners {
     }
 
     /**
-     * @dev Change owner
+     * @dev Change one of the owners
      * @param newOwner address of new owner
      */
     function changeOwner(address newOwner) public onlyOwner {
@@ -59,7 +60,7 @@ contract Owners {
             !isOwner[newOwner] && newOwner != address(0),
             "Owners: invalid address given"
         );
-        address[] memory _owners;
+        address[] memory _owners = new address[](owners.length);
         // create a new array of owners replacing the old one
         for (uint256 i = 0; i < owners.length; ++i) {
             if (owners[i] != msg.sender) {

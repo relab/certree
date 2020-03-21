@@ -74,6 +74,11 @@ abstract contract AccountableIssuer is Issuer {
         return digests;
     }
 
+    /**
+     * @dev registerCredential collects all subject's credentials and issue a
+     * new credential proof iff the aggregation of those credentials on
+     * the sub-contracts match the given root (i.e. off-chain aggregation == on-chain aggregation)
+     */
     function registerCredential(
         address subject,
         bytes32 digest,
@@ -98,12 +103,12 @@ abstract contract AccountableIssuer is Issuer {
     /**
      * @dev verifyCredential iteractivally verifies if a given credential
      * (i.e. represented by it's digest) corresponds to the aggregation 
-     * of all stored credentials of a particular subject in all given contracts.
-     * @param subject is the subject referred by all credentials to be verified.
+     * of all stored credentials of a particular subject in all given sub-contracts
+     * @param subject is the subject referred by all credentials to be verified
      * @param proofs is an array containing the resulted aggregated hashes of
-     * all issuers in "issuersAddresses" plus the final issued digest.
+     * all issuers in "issuersAddresses" plus the final issued digest
      * @param issuersAddresses is an array with the address of all authorized
-     * issuers that stores the subject credentials.
+     * issuers that stores the subject credentials
      */
     function verifyCredential(address subject, bytes32[] memory proofs, address[] memory issuersAddresses) public view returns(bool) {
         require(issuersAddresses.length > 0, "AccountableIssuer: require at least one issuer");

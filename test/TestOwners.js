@@ -1,8 +1,8 @@
-const { constants, expectRevert } = require('@openzeppelin/test-helpers');
-const Owners = artifacts.require('Owners');
+const { constants, expectRevert, expectEvent } = require('@openzeppelin/test-helpers');
+const Owners = artifacts.require('OwnersMock');
 
 contract('Owners', accounts => {
-    const [owner1, owner2] = accounts;
+    const [owner1, owner2, owner3, other] = accounts;
     let contract = null;
 
     describe('constructor', () => {
@@ -31,6 +31,49 @@ contract('Owners', accounts => {
 
         it('should not allow zero address for owner', async () => {
             await expectRevert.assertion(Owners.new([owner1, constants.ZERO_ADDRESS], 2));
+        });
+    });
+
+    describe('change owner', () => {
+        beforeEach(async () => {
+            contract = await Owners.new([owner1, owner2], 2);
+        });
+
+        it('should successfully change an owner', async () => {
+            (await contract.isOwner(owner1)).should.equal(true);
+            (await contract.isOwner(owner2)).should.equal(true);
+            (await contract.isOwner(owner3)).should.equal(false);
+            assert(contract.quorum(), 2);
+
+            await contract.changeOwner(owner3, { from: owner1 });
+
+            (await contract.isOwner(owner1)).should.equal(false);
+            (await contract.isOwner(owner2)).should.equal(true);
+            (await contract.isOwner(owner3)).should.equal(true);
+            assert(contract.quorum(), 2);
+        });
+
+        it('should revert if the list of owners is empty', async () => {
+            await contract.deleteOwners();
+            await expectRevert(contract.changeOwner(owner3, { from: owner1 }), "Owners: not enough owners");
+        });
+
+
+        it('should revert if the newOwner is already an owner', async () => {
+            await expectRevert(contract.changeOwner(owner2, { from: owner1 }), "Owners: invalid address given");
+        });
+
+
+        it('should revert if the given address is invalid', async () => {
+            await expectRevert(contract.changeOwner(constants.ZERO_ADDRESS, { from: owner1 }), "Owners: invalid address given");
+        });
+
+        it('should emit an event when changing owner', async () => {
+            let { logs } = await contract.changeOwner(owner3, { from: owner1 })
+            expectEvent.inLogs(logs, 'OwnerChanged', {
+                oldOwner: owner1,
+                newOwner: owner3
+            });
         });
     });
 });

@@ -64,11 +64,11 @@ abstract contract Issuer is IssuerInterface, Owners {
     // Maps document digest to revoked proof
     mapping(bytes32 => RevocationProof) public revokedCredentials;
 
-    // Map digest to owners that already signed it
+    // Maps digest to owners that already signed it
     mapping(bytes32 => mapping(address => bool)) public ownersSigned;
 
     /**
-     * @dev Constructor creates an Owners contract
+     * @dev Constructor creates an Issuer contract
      */
     constructor(address[] memory owners, uint256 quorum)
         public
@@ -85,10 +85,16 @@ abstract contract Issuer is IssuerInterface, Owners {
         _;
     }
 
+    /**
+     * @return the registered digests of a subject
+     */
     function digestsBySubject(address subject) public view returns(bytes32[] memory) {
         return _digestsBySubject[subject];
     }
 
+    /**
+     * @return the aggregated proof of a subject
+     */
     function getProof(address subject) public view returns (bytes32) {
         return aggregatedProofs.proofs(subject);
     }
@@ -182,7 +188,7 @@ abstract contract Issuer is IssuerInterface, Owners {
     }
 
     /**
-     * @dev request the emission of a quorum signed credential proof
+     * @dev confirms the emission of a quorum signed credential proof
      */
     function confirmCredential(bytes32 digest) public override notRevoked(digest) {
         CredentialProof storage proof = issuedCredentials[digest];
@@ -233,6 +239,9 @@ abstract contract Issuer is IssuerInterface, Owners {
         );
     }
 
+    /**
+     * @dev verifies if a list of digests are certified
+     */
     function checkCredentials(bytes32[] memory digests) public view returns (bool) {
         require(
             digests.length > 0,
@@ -249,7 +258,7 @@ abstract contract Issuer is IssuerInterface, Owners {
     }
 
     /**
-     * @dev aggregateCredentials aggregates the digests of a given subject on the credential level.
+     * @dev aggregateCredentials aggregates the digests of a given subject on the credential level
      */
      // TODO: only owner should be able to aggregate? In theory anyone should be able to call it, since it only operate over already valid data to add the aggregated value, I guess the method is safe to be performed by anyone, even though it writes in the contract state, but of course, this will change the msg.sender.
     function aggregateCredentials(address subject) public override virtual returns (bytes32) {

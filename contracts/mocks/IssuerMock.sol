@@ -12,6 +12,7 @@ contract IssuerMock is Issuer {
 
     function setOwner(address owner) public {
         owners.push(owner);
+        isOwner[owner] = true;
     }
 
     function createSignedCredential(address subject, bytes32 digest) public {
