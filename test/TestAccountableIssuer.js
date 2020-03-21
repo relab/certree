@@ -20,14 +20,17 @@ async function generateCredentials(contract, numberOfIssuers, acIssuerOwner, iss
         }
         certsPerIssuer.push(await issuerContract.digestsBySubject(subject));
     }
+    return { issuerAddresses, certsPerIssuer };
+}
+
+async function aggregateCredentials(contract, acIssuerOwner, subject) {
     let { logs } = await contract.generateAggregation(subject, { from: acIssuerOwner });
 
     let aggregationsPerIssuer = (logs.find(e => e.event == "AggregationCreated")).args.certificates;
-
-    return { issuerAddresses, aggregationsPerIssuer, certsPerIssuer };
+    return aggregationsPerIssuer
 }
 
-function makeRoot(certs) {
+function hash(certs) {
     return web3.utils.keccak256(web3.eth.abi.encodeParameter('bytes32[]', certs));
 }
 
@@ -79,7 +82,35 @@ contract('AccountableIssuer', accounts => {
         });
     });
 
-    describe('collectCredentials', () => { /* TODO */ });
+    describe('collectCredentials', () => {
+        let issuerAddresses = [];
+        let expectedRoot = null;
+
+        beforeEach(async () => {
+            acIssuer = await AccountableIssuer.new([issuer1], 1);
+            ({ issuerAddresses } = await generateCredentials(acIssuer, 3, issuer1, [issuer3], subject));
+        });
+
+        it('should revert if the given issuer list is empty', async () => {
+            await expectRevert(acIssuer.collectCredentials(subject, []), "AccountableIssuer: require at least one issuer");
+        });
+
+        it('should revert if given issuer address isn\'t registered', async () => {
+            await expectRevert(acIssuer.collectCredentials(subject, ["0x6e29A025E9DDfE53073C9bEdBff3cb057bC0f44A"]), "AccountableIssuer: issuer's address doesn't found");
+        });
+
+        it('should revert if there is no aggregation on sub-contracts', async () => {
+            await expectRevert(acIssuer.collectCredentials(subject, issuerAddresses), "AccountableIssuer: aggregation on sub-contract not found");
+        });
+
+        it('should collect all sub-contract aggregated credentials', async () => {
+            let expected = await aggregateCredentials(acIssuer, issuer1, subject);
+
+            let collected = await acIssuer.collectCredentials.call(subject, issuerAddresses);
+
+            expect(collected).to.have.same.members(expected);
+        });
+    });
 
     describe('issuing root credential', () => {
         let issuerAddresses, aggregationsPerIssuer, certsPerIssuer = [];
@@ -87,9 +118,12 @@ contract('AccountableIssuer', accounts => {
 
         beforeEach(async () => {
             acIssuer = await AccountableIssuer.new([issuer1, issuer2], 2);
-            ({ issuerAddresses, aggregationsPerIssuer, certsPerIssuer } = await generateCredentials(acIssuer, 2, issuer1, [issuer3], subject));
+            ({ issuerAddresses, certsPerIssuer } = await generateCredentials(acIssuer, 2, issuer1, [issuer3], subject));
+
+            aggregationsPerIssuer = await aggregateCredentials(acIssuer, issuer1, subject);
+
             aggregationsPerIssuer.push(digest);
-            expectedRoot = makeRoot(aggregationsPerIssuer);
+            expectedRoot = hash(aggregationsPerIssuer);
         });
 
         it('should issue a root credential', async () => {
@@ -130,9 +164,12 @@ contract('AccountableIssuer', accounts => {
 
         beforeEach(async () => {
             acIssuer = await AccountableIssuer.new([issuer1], 1);
-            ({ issuerAddresses, aggregationsPerIssuer, certsPerIssuer } = await generateCredentials(acIssuer, 2, issuer1, [issuer2], subject));
+            ({ issuerAddresses, certsPerIssuer } = await generateCredentials(acIssuer, 2, issuer1, [issuer2], subject));
+
+            aggregationsPerIssuer = await aggregateCredentials(acIssuer, issuer1, subject);
+
             aggregationsPerIssuer.push(digest);
-            expectedRoot = makeRoot(aggregationsPerIssuer);
+            expectedRoot = hash(aggregationsPerIssuer);
         });
 
         it('should successfully verify a valid root credential', async () => {
@@ -208,7 +245,7 @@ contract('AccountableIssuer', accounts => {
 
             let proofs = aggregationsPerIssuer.slice();
             proofs.push(wrongdigest);
-            root = makeRoot(proofs);
+            root = hash(proofs);
 
             (await acIssuer.verifyCredential(subject, proofs, issuerAddresses)).should.equal(false);
         });
