@@ -19,4 +19,9 @@ contract IssuerMock is Issuer {
         _issue(subject, digest);
         issuedCredentials[digest].subjectSigned = true;
     }
+
+    function deleteProof(address subject) public {
+        aggregatedProofs._proofs[subject] = bytes32(0);
+    }
+
 }

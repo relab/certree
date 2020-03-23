@@ -113,12 +113,12 @@ contract('AccountableIssuer', accounts => {
     });
 
     describe('issuing root credential', () => {
-        let issuerAddresses, aggregationsPerIssuer, certsPerIssuer = [];
+        let issuerAddresses, aggregationsPerIssuer = [];
         let expectedRoot = null;
 
         beforeEach(async () => {
             acIssuer = await AccountableIssuer.new([issuer1, issuer2], 2);
-            ({ issuerAddresses, certsPerIssuer } = await generateCredentials(acIssuer, 2, issuer1, [issuer3], subject));
+            ({ issuerAddresses } = await generateCredentials(acIssuer, 2, issuer1, [issuer3], subject));
 
             aggregationsPerIssuer = await aggregateCredentials(acIssuer, issuer1, subject);
 
@@ -153,36 +153,24 @@ contract('AccountableIssuer', accounts => {
             const wrongRoot = web3.utils.keccak256(web3.utils.toHex('wrongRoot'));
             await expectRevert(
                 acIssuer.methods["registerCredential(address,bytes32,bytes32,address[])"](subject, digest, wrongRoot, issuerAddresses, { from: issuer1 }),
-                'AccountableIssuer: root is not equal'
+                'AccountableIssuer: given proof could not be generated with existing credentials'
             );
         });
     });
 
     describe('verifying credential', () => {
-        let issuerAddresses, aggregationsPerIssuer, certsPerIssuer = [];
-        let expectedRoot = null;
+        let issuerAddresses, aggregationsPerIssuer = [];
+        const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
         beforeEach(async () => {
             acIssuer = await AccountableIssuer.new([issuer1], 1);
-            ({ issuerAddresses, certsPerIssuer } = await generateCredentials(acIssuer, 2, issuer1, [issuer2], subject));
+            ({ issuerAddresses } = await generateCredentials(acIssuer, 2, issuer1, [issuer2], subject));
 
             aggregationsPerIssuer = await aggregateCredentials(acIssuer, issuer1, subject);
-
-            aggregationsPerIssuer.push(digest);
-            expectedRoot = hash(aggregationsPerIssuer);
         });
 
-        it('should successfully verify a valid root credential', async () => {
-            await acIssuer.methods["registerCredential(address,bytes32,bytes32,address[])"](subject, digest, expectedRoot, issuerAddresses, { from: issuer1 });
-
+        it('should successfully verify a valid set of credentials', async () => {
             (await acIssuer.verifyCredential(subject, aggregationsPerIssuer, issuerAddresses)).should.equal(true);
-        });
-
-        it('should revert if the proof doesn\'t exists', async () => {
-            await expectRevert(
-                acIssuer.verifyCredential(subject, aggregationsPerIssuer, issuerAddresses),
-                'CredentialSum: proof not exists'
-            );
         });
 
         it('should revert if there is no sufficient number of issuers', async () => {
@@ -215,18 +203,29 @@ contract('AccountableIssuer', accounts => {
             );
         });
 
+        it('should revert if the proof doesn\'t exists', async () => {
+            i = aggregationsPerIssuer.length - 1;
+            wrongDigests = aggregationsPerIssuer.slice(0, i)
+            wrongDigests.push(ZERO_BYTES32);
+
+            let issuer = await Issuer.at(issuerAddresses[i]);
+            await issuer.deleteProof(subject);
+
+            await expectRevert(
+                acIssuer.verifyCredential(subject, wrongDigests, issuerAddresses),
+                'CredentialSum: proof not exists'
+            );
+        });
+
         it('should revert if there is no proof on sub-contracts', async () => {
             let issuer = await Issuer.new([other], 1);
             await acIssuer.addIssuer(issuer.address);
             await expectRevert(
                 acIssuer.verifyCredential(subject, aggregationsPerIssuer, [issuer.address]),
-                'Issuer: there is no aggregated proof to verify'
-            );
+                'Issuer: proof doesn\'t match or not exists');
         });
 
-        it('should revert if the proofs don\'t match', async () => {
-            await acIssuer.methods["registerCredential(address,bytes32,bytes32,address[])"](subject, digest, expectedRoot, issuerAddresses, { from: issuer1 });
-
+        it('should revert if proofs don\'t match', async () => {
             let fakeCerts = []
             for (let i = 0; i < 3; i++) {
                 fakeCerts[i] = web3.utils.keccak256(web3.utils.toHex(`someValue-${i}`));
@@ -234,20 +233,8 @@ contract('AccountableIssuer', accounts => {
 
             await expectRevert(
                 acIssuer.verifyCredential(subject, fakeCerts, issuerAddresses),
-                'Issuer: given credentials don\'t match with stored proofs'
+                'Issuer: proof doesn\'t match or not exists'
             );
-        });
-
-        it('should return false if given proof doesn\'t match', async () => {
-            await acIssuer.methods["registerCredential(address,bytes32,bytes32,address[])"](subject, digest, expectedRoot, issuerAddresses, { from: issuer1 });
-
-            const wrongdigest = web3.utils.keccak256(web3.utils.toHex('wrongRoot'));
-
-            let proofs = aggregationsPerIssuer.slice();
-            proofs.push(wrongdigest);
-            root = hash(proofs);
-
-            (await acIssuer.verifyCredential(subject, proofs, issuerAddresses)).should.equal(false);
         });
     });
 });

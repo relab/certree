@@ -30,10 +30,10 @@ library CredentialSum {
     }
 
     /**
-     * @dev verifyProof checks if the stored proof was generated using
+     * @dev verifySelfProof checks if the stored proof was generated using
      * the given list of certificates
      */
-    function verifyProof(Proof storage self, address subject, bytes32[] memory certificates)
+    function verifySelfProof(Proof storage self, address subject, bytes32[] memory certificates)
         public
         view
         returns (bool)
@@ -41,6 +41,18 @@ library CredentialSum {
         require(self._proofs[subject] != bytes32(0), "CredentialSum: proof not exists");
         bytes32 proof = keccak256(abi.encode(certificates));
         return (self._proofs[subject] == proof);
+    }
+
+    /**
+     * @dev verifyProof checks if the given list of certificates generates the
+     * requested proof
+     */
+    function verifyProof(bytes32 proof, bytes32[] calldata certificates)
+        external
+        pure
+        returns (bool)
+    {
+        return (proof == keccak256(abi.encode(certificates)));
     }
 
     function proofs(Proof storage self, address subject)

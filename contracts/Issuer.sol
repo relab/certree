@@ -276,9 +276,8 @@ abstract contract Issuer is IssuerInterface, Owners {
      * was correctly generated
      */
     function verifyCredential(address subject, bytes32 digest) public view override returns (bool) {
-        require(aggregatedProofs.proofs(subject) != bytes32(0), "Issuer: there is no aggregated proof to verify");
         bytes32 proof = aggregatedProofs.proofs(subject);
-        require(proof == digest, "Issuer: given credentials don't match with stored proofs");
-        return aggregatedProofs.verifyProof(subject, _digestsBySubject[subject]);
+        require(proof == digest, "Issuer: proof doesn't match or not exists");
+        return aggregatedProofs.verifySelfProof(subject, _digestsBySubject[subject]);
     }
 }

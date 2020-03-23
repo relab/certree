@@ -2,6 +2,7 @@ pragma solidity >=0.5.13 <0.7.0;
 // pragma experimental ABIEncoderV2;
 
 import "./Issuer.sol";
+import "./CredentialSum.sol";
 // import "@openzeppelin/contracts/math/SafeMath.sol";
 // import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 
@@ -85,6 +86,8 @@ abstract contract AccountableIssuer is Issuer {
         bytes32 digestRoot,
         address[] memory issuersAddresses
     ) public onlyOwner {
+        // FIXME: this method doesn't allow further aggregation
+        // consider remove this check. What are the consequences of it?
         require(aggregatedProofs.proofs(subject) == bytes32(0), "AccountableIssuer: credentials already aggregated, not possible to issue new credentials");
         bytes32[] memory d = collectCredentials(subject, issuersAddresses);
         bytes32[] memory digests = new bytes32[](d.length + 1);
@@ -94,8 +97,7 @@ abstract contract AccountableIssuer is Issuer {
         }
         // Add current credential
         digests[i] = digest;
-        bytes32 aggregatedDigest =  aggregatedProofs.generateProof(subject, digests);
-        require(aggregatedDigest == digestRoot, "AccountableIssuer: root is not equal");
+        require(CredentialSum.verifyProof(digestRoot, digests), "AccountableIssuer: given proof could not be generated with existing credentials");
         _issue(subject, digest);
         emit CredentialSigned(msg.sender, digest, block.number);
     }
@@ -116,8 +118,9 @@ abstract contract AccountableIssuer is Issuer {
             address issuerAddress = address(issuersAddresses[i]);
             require(isIssuer[issuerAddress], "AccountableIssuer: address not registered");
             Issuer issuer = Issuer(issuerAddress);
-            assert(issuer.verifyCredential(subject, proofs[i])); //verify leaves construction
+            //verify leaves construction
+            if(!issuer.verifyCredential(subject, proofs[i])) { return false; }
         }
-        return aggregatedProofs.verifyProof(subject, proofs); //verify root construction
+        return true;
     }
 }

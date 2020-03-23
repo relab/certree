@@ -2,7 +2,7 @@ const { constants, expectRevert, expectEvent } = require('@openzeppelin/test-hel
 const Owners = artifacts.require('OwnersMock');
 
 contract('Owners', accounts => {
-    const [owner1, owner2, owner3, other] = accounts;
+    const [owner1, owner2, owner3] = accounts;
     let contract = null;
 
     describe('constructor', () => {

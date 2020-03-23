@@ -1,17 +1,15 @@
 const { BN, expectEvent, expectRevert, time, constants } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
-const assertFailure = require('./helpers/assertFailure');
 
 const Issuer = artifacts.require('IssuerMock');
 
 contract('Issuer', accounts => {
-    const [issuer1, issuer2, issuer3, subject1, subject2, other] = accounts;
+    const [issuer1, issuer2, issuer3, subject1, subject2] = accounts;
     let issuer = null;
     const reason = web3.utils.keccak256(web3.utils.toHex('revoked'));
     const digest1 = web3.utils.keccak256(web3.utils.toHex('cert1'));
     const digest2 = web3.utils.keccak256(web3.utils.toHex('cert2'));
     const digest3 = web3.utils.keccak256(web3.utils.toHex('cert3'));
-    const zeroDigest = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
     describe('constructor', () => {
         it('should successfully deploy the contract initializing the owners', async () => {
@@ -108,7 +106,7 @@ contract('Issuer', accounts => {
             for (let i = 0; i < length; i++) {
                 const owner = await issuer.owners(i);
                 const signed = await issuer.ownersSigned(digest1, owner);
-                if (signed)--quorum;
+                if (signed) --quorum;
             }
             (quorum).should.equal(0);
         });
@@ -405,14 +403,14 @@ contract('Issuer', accounts => {
         it('should revert if given credentials don\'t match the stored proofs', async () => {
             await expectRevert(
                 issuer.verifyCredential(subject1, digest1),
-                'Issuer: given credentials don\'t match with stored proofs'
+                'Issuer: proof doesn\'t match or not exists'
             );
         });
 
         it('should revert if there is no credential to be verified for a given subject', async () => {
             await expectRevert(
                 issuer.verifyCredential(subject2, expected),
-                'Issuer: there is no aggregated proof to verify'
+                'Issuer: proof doesn\'t match or not exists'
             );
         });
     });
