@@ -17,7 +17,6 @@ library CredentialSum {
         public
         returns (bytes32)
     {
-        require(self._proofs[subject] == bytes32(0), "CredentialSum: proof already generated");
         require(
             certificates.length > 0,
             "CredentialSum: there is no certificates"

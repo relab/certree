@@ -5,15 +5,16 @@ import "./IssuerInterface.sol";
 import "./Owners.sol";
 import "./CredentialSum.sol";
 
+
 // import "@openzeppelin/contracts/math/SafeMath.sol";
 
 // TODO: how to manage key changes? e.g. a student that lost his previous key. Reissue the certificates may not work, since the time ordering, thus a possible solution is the contract to store a key update information for the subject, or something like that.
 
 /**
  * @title Issuer's contract ensures that verifiable credentials are correctly
-  * issued by untrusted issuers, discouraging fraudulent processes by
-  * establishing a casual order between the certificates.
-*/
+ * issued by untrusted issuers, discouraging fraudulent processes by
+ * establishing a casual order between the certificates.
+ */
 abstract contract Issuer is IssuerInterface, Owners {
     // using SafeMath for uint256;
 
@@ -31,7 +32,7 @@ abstract contract Issuer is IssuerInterface, Owners {
         // FIXME: redundant time information. Decide on which one to use
         uint256 insertedBlock; // The block number of the proof creation
         uint256 blockTimestamp; // The block timestamp of the proof creation
-        uint256 nonce;  // Increment-only counter of credentials of the same subject
+        uint256 nonce; // Increment-only counter of credentials of the same subject
         address issuer; // The issuer address of this proof
         address subject; // The entity address refered by a proof
         bytes32 digest; // The digest of the credential stored (e.g. Swarm/IPFS hash)
@@ -88,7 +89,11 @@ abstract contract Issuer is IssuerInterface, Owners {
     /**
      * @return the registered digests of a subject
      */
-    function digestsBySubject(address subject) public view returns(bytes32[] memory) {
+    function digestsBySubject(address subject)
+        public
+        view
+        returns (bytes32[] memory)
+    {
         return _digestsBySubject[subject];
     }
 
@@ -108,7 +113,7 @@ abstract contract Issuer is IssuerInterface, Owners {
     }
 
     function _issue(address subject, bytes32 digest)
-        internal 
+        internal
         onlyOwner
         notRevoked(digest)
     {
@@ -150,12 +155,7 @@ abstract contract Issuer is IssuerInterface, Owners {
             );
             ++nonce[subject];
             _digestsBySubject[subject].push(digest); // append subject's credential hash
-            emit CredentialIssued(
-                digest,
-                subject,
-                msg.sender,
-                block.number
-            );
+            emit CredentialIssued(digest, subject, msg.sender, block.number);
         } else {
             require(
                 issuedCredentials[digest].subject == subject,
@@ -172,8 +172,8 @@ abstract contract Issuer is IssuerInterface, Owners {
      */
     function registerCredential(address subject, bytes32 digest)
         public
-        override
         virtual
+        override
         onlyOwner
     {
         _issue(subject, digest);
@@ -242,14 +242,18 @@ abstract contract Issuer is IssuerInterface, Owners {
     /**
      * @dev verifies if a list of digests are certified
      */
-    function checkCredentials(bytes32[] memory digests) public view returns (bool) {
+    function checkCredentials(bytes32[] memory digests)
+        public
+        view
+        returns (bool)
+    {
         require(
             digests.length > 0,
             "Issuer: there is no credential for the given subject"
         );
         // TODO: ignore the revoke credentials in the aggregation
         for (uint256 i = 0; i < digests.length; i++) {
-            if(!certified(digests[i])) {
+            if (!certified(digests[i])) {
                 return false;
             } //&& !isRevoked(digests[i]));
             // all subject's certificates must be signed by all parties and should be valid
@@ -260,13 +264,19 @@ abstract contract Issuer is IssuerInterface, Owners {
     /**
      * @dev aggregateCredentials aggregates the digests of a given subject on the credential level
      */
-     // TODO: only owner should be able to aggregate? In theory anyone should be able to call it, since it only operate over already valid data to add the aggregated value, I guess the method is safe to be performed by anyone, even though it writes in the contract state, but of course, this will change the msg.sender.
-    function aggregateCredentials(address subject) public override virtual returns (bytes32) {
-        if(aggregatedProofs.proofs(subject) != bytes32(0)) {
-            return aggregatedProofs.proofs(subject);
-        }
+    // TODO: only owner should be able to aggregate? In theory anyone should be able to call it, since it only operate over already valid data to add the aggregated value, I guess the method is safe to be performed by anyone, even though it writes in the contract state, but of course, this will change the msg.sender.
+    function aggregateCredentials(address subject)
+        public
+        virtual
+        override
+        // onlyOwner
+        returns (bytes32)
+    {
         bytes32[] memory digests = _digestsBySubject[subject];
-        require(checkCredentials(digests), "Issuer: there are unsigned credentials");
+        require(
+            checkCredentials(digests),
+            "Issuer: there are unsigned credentials"
+        );
         // TODO: delete the credentials proofs and digests
         return aggregatedProofs.generateProof(subject, digests);
     }
@@ -275,9 +285,18 @@ abstract contract Issuer is IssuerInterface, Owners {
      * @dev verifyCredential verifies if the credential of a given subject
      * was correctly generated
      */
-    function verifyCredential(address subject, bytes32 digest) public view override returns (bool) {
+    function verifyCredential(address subject, bytes32 digest)
+        public
+        view
+        override
+        returns (bool)
+    {
         bytes32 proof = aggregatedProofs.proofs(subject);
         require(proof == digest, "Issuer: proof doesn't match or not exists");
-        return aggregatedProofs.verifySelfProof(subject, _digestsBySubject[subject]);
+        return
+            aggregatedProofs.verifySelfProof(
+                subject,
+                _digestsBySubject[subject]
+            );
     }
 }
