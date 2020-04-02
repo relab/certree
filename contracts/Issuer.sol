@@ -19,8 +19,8 @@ abstract contract Issuer is IssuerInterface, Owners {
     // using SafeMath for uint256;
 
     // Result of an aggregation of all digests of one subject
-    using CredentialSum for Proof;
-    Proof aggregatedProofs;
+    using CredentialSum for CredentialSum.Proof;
+    CredentialSum.Proof aggregatedProofs;
 
     /**
      * @dev CredentialProof represents an on-chain proof that a

@@ -1,8 +1,10 @@
 pragma solidity >=0.5.13 <0.7.0;
 
-struct Proof { mapping(address => bytes32) _proofs; }
-
 library CredentialSum {
+
+    struct Proof {
+        mapping(address => bytes32) _proofs;
+    }
 
     // Logged when a credential is aggregated.
     event AggregatedProof(
