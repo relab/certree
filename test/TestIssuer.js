@@ -103,7 +103,7 @@ contract('Issuer', accounts => {
             (quorum).should.equal(0);
         });
 
-        it('should not allow issue a new credential before sign the previous', async () => {
+        it('should not allow issue a new credential at same timestamp of the previous', async () => {
             await issuer.registerCredential(subject1, digest1, { from: issuer1 });
 
             const credential1 = await issuer.issuedCredentials(digest1);
@@ -112,10 +112,21 @@ contract('Issuer', accounts => {
             assert.equal(credential1.digest, digest1);
             (await issuer.ownersSigned(digest1, issuer1)).should.equal(true);
 
+            // Fail when try to register a credential at same timestamp of the previous
             await expectRevert(
                 issuer.registerCredential(subject1, digest2, { from: issuer1 }),
-                'Issuer: previous credential must be signed before issue a new one'
+                "Issuer: new credential shouldn't happen at same timestamp of the previous for the same subject"
             );
+
+            await time.increase(time.duration.seconds(1));
+            await issuer.registerCredential(subject1, digest2, { from: issuer1 });
+
+            const credential2 = await issuer.issuedCredentials(digest2);
+            expect(credential2.signed).to.be.bignumber.equal(new BN(1));
+            assert.equal(credential2.subject, subject1);
+            assert.equal(credential2.digest, digest2);
+            (await issuer.ownersSigned(digest2, issuer1)).should.equal(true);
+
         });
     });
 

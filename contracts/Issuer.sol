@@ -133,15 +133,11 @@ abstract contract Issuer is IssuerInterface, Owners {
                 assert(_digestsBySubject[subject].length > 0);
                 bytes32 previousDigest = _digestsBySubject[subject][lastNonce];
                 CredentialProof memory c = issuedCredentials[previousDigest];
-                require(
-                    c.subjectSigned,
-                    "Issuer: previous credential must be signed before issue a new one"
-                );
                 // Ensure that a previous certificate happens before the new one.
                 // solhint-disable-next-line expression-indent
-                assert(c.insertedBlock < block.number);
+                require(c.insertedBlock < block.number, "Issuer: new credential shouldn't happen at same block of the previous for the same subject");
                 // solhint-disable-next-line not-rely-on-time, expression-indent
-                assert(c.blockTimestamp < block.timestamp);
+                require(c.blockTimestamp < block.timestamp, "Issuer: new credential shouldn't happen at same timestamp of the previous for the same subject");
             }
             issuedCredentials[digest] = CredentialProof(
                 1,
