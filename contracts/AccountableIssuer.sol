@@ -108,7 +108,7 @@ abstract contract AccountableIssuer is Issuer {
      * of all stored credentials of a particular subject in all given sub-contracts
      * @param subject is the subject referred by all credentials to be verified
      * @param proofs is an array containing the resulted aggregated hashes of
-     * all issuers in "issuersAddresses" plus the final issued digest
+     * all issuers in "issuersAddresses"
      * @param issuersAddresses is an array with the address of all authorized
      * issuers that stores the subject credentials
      */

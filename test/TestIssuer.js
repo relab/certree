@@ -16,32 +16,34 @@ contract('Issuer', accounts => {
             issuer = await Issuer.new([issuer1, issuer2], 2);
             (await issuer.isOwner(issuer1)).should.equal(true);
             (await issuer.isOwner(issuer2)).should.equal(true);
-            assert(issuer.quorum(), 2);
+            expect(await issuer.quorum()).to.be.bignumber.equal(new BN(2));
         });
 
         it('should successfully get a deployed contract', async () => {
             issuer = await Issuer.deployed([issuer1, issuer2], 2);
             (await issuer.isOwner(issuer1)).should.equal(true);
             (await issuer.isOwner(issuer2)).should.equal(true);
-            assert(issuer.quorum(), 2);
+            expect(await issuer.quorum()).to.be.bignumber.equal(new BN(2));
         });
     });
 
     describe('issue', () => {
-        it('should successfully create a signed credential proof', async () => {
+        beforeEach(async () => {
             issuer = await Issuer.new([issuer1], 1);
+        });
+
+        it('should successfully create a signed credential proof', async () => {
             await issuer.registerCredential(subject1, digest1, { from: issuer1 });
             const credential = await issuer.issuedCredentials(digest1);
-            assert(credential.signed, 1);
+            expect(credential.signed).to.be.bignumber.equal(new BN(1));
             (credential.subjectSigned).should.equal(false);
             expect(await time.latestBlock()).to.be.bignumber.equal(new BN(credential.insertedBlock));
-            assert(credential.subject, subject1);
-            assert(credential.digest, digest1);
+            assert.equal(credential.subject, subject1);
+            assert.equal(credential.digest, digest1);
             (await issuer.ownersSigned(digest1, issuer1)).should.equal(true);
         });
 
         it('should emits an event when a credential proof is issued', async () => {
-            issuer = await Issuer.new([issuer1], 1);
             let { logs } = await issuer.registerCredential(subject1, digest1, { from: issuer1 });
 
             let block = await time.latestBlock();
@@ -54,7 +56,6 @@ contract('Issuer', accounts => {
         });
 
         it('should not issue an already issued credential proof', async () => {
-            issuer = await Issuer.new([issuer1], 1);
             await issuer.registerCredential(subject1, digest1, { from: issuer1 });
 
             await expectRevert(
@@ -63,22 +64,14 @@ contract('Issuer', accounts => {
             );
         });
 
-        it('should not allow an issuer to issue credential proof to themselves', async () => {
-            issuer = await Issuer.new([issuer1, issuer2], 1);
-
+        it('should not allow an issuer to issue credential proof to himself', async () => {
             await expectRevert(
                 issuer.registerCredential(issuer1, digest1, { from: issuer1 }),
-                'Issuer: subject cannot be the issuer'
-            );
-
-            await expectRevert(
-                issuer.registerCredential(issuer1, digest1, { from: issuer2 }),
                 'Issuer: subject cannot be the issuer'
             );
         });
 
         it('should not issue a credential proof from a unauthorized address', async () => {
-            issuer = await Issuer.new([issuer1], 1);
             await expectRevert(
                 issuer.registerCredential(subject1, digest1, { from: issuer3 }),
                 'Owners: sender is not an owner'
@@ -86,8 +79,7 @@ contract('Issuer', accounts => {
         });
 
         it('should not issue a credential proof with the same digest for different subjects', async () => {
-            issuer = await Issuer.new([issuer1, issuer2], 2);
-
+            issuer = await Issuer.new([issuer1, issuer2], 1);
             await issuer.registerCredential(subject1, digest1, { from: issuer1 });
 
             await expectRevert(
@@ -112,13 +104,12 @@ contract('Issuer', accounts => {
         });
 
         it('should not allow issue a new credential before sign the previous', async () => {
-            issuer = await Issuer.new([issuer1, issuer2, issuer3], 2);
             await issuer.registerCredential(subject1, digest1, { from: issuer1 });
 
             const credential1 = await issuer.issuedCredentials(digest1);
-            assert(credential1.signed, 2);
-            assert(credential1.subject, subject1);
-            assert(credential1.digest, digest1);
+            expect(credential1.signed).to.be.bignumber.equal(new BN(1));
+            assert.equal(credential1.subject, subject1);
+            assert.equal(credential1.digest, digest1);
             (await issuer.ownersSigned(digest1, issuer1)).should.equal(true);
 
             await expectRevert(
@@ -277,9 +268,9 @@ contract('Issuer', accounts => {
 
             const revocation = await issuer.revokedCredentials(digest1);
             expect(await time.latestBlock()).to.be.bignumber.equal(new BN(revocation.revokedBlock));
-            assert(revocation.reason, reason);
-            assert(revocation.subject, subject1);
-            assert(revocation.issuer, issuer1);
+            assert.equal(revocation.reason, reason);
+            assert.equal(revocation.subject, subject1);
+            assert.equal(revocation.issuer, issuer1);
         });
 
         it('should emits an event when create a revocation proof', async () => {
@@ -296,9 +287,9 @@ contract('Issuer', accounts => {
             });
 
             const credential = await issuer.issuedCredentials(digest1);
-            assert(credential.subject, constants.ZERO_ADDRESS);
-            assert(credential.issuer, constants.ZERO_ADDRESS);
-            assert(credential.insertedBlock, 0);
+            assert.equal(credential.subject, constants.ZERO_ADDRESS);
+            assert.equal(credential.issuer, constants.ZERO_ADDRESS);
+            expect(credential.insertedBlock).to.be.bignumber.equal(new BN(0));
 
             (await issuer.certified(digest1)).should.equal(false);
         });
@@ -325,7 +316,7 @@ contract('Issuer', accounts => {
             });
 
             it('should aggregate all credentials of a subject', async () => {
-                const aggregated = await issuer.aggregateCredentials.call(subject1);// don't emit event
+                const aggregated = await issuer.aggregateCredentials.call(subject1); // don't emit event
                 (aggregated).should.equal(expected);
             });
 

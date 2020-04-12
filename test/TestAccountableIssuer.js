@@ -1,4 +1,5 @@
-const { expectEvent, expectRevert, time } = require('@openzeppelin/test-helpers');
+const { BN, expectEvent, expectRevert, time } = require('@openzeppelin/test-helpers');
+const { expect } = require('chai');
 
 const Issuer = artifacts.require('IssuerMock');
 const AccountableIssuer = artifacts.require('AccountableIssuerMock');
@@ -45,7 +46,7 @@ contract('AccountableIssuer', accounts => {
             acIssuer = await AccountableIssuer.new([issuer1, issuer2], 2);
             (await acIssuer.isOwner(issuer1)).should.equal(true);
             (await acIssuer.isOwner(issuer2)).should.equal(true);
-            assert(acIssuer.quorum(), 2);
+            expect(await acIssuer.quorum()).to.be.bignumber.equal(new BN(2));
         });
     });
 

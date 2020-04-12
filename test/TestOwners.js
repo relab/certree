@@ -1,4 +1,6 @@
-const { constants, expectRevert, expectEvent } = require('@openzeppelin/test-helpers');
+const { BN, constants, expectRevert, expectEvent } = require('@openzeppelin/test-helpers');
+const { expect } = require('chai');
+
 const Owners = artifacts.require('OwnersMock');
 
 contract('Owners', accounts => {
@@ -10,7 +12,7 @@ contract('Owners', accounts => {
             contract = await Owners.new([owner1, owner2], 2);
             (await contract.isOwner(owner1)).should.equal(true);
             (await contract.isOwner(owner2)).should.equal(true);
-            assert(contract.quorum(), 2);
+            expect(await contract.quorum()).to.be.bignumber.equal(new BN(2));
         });
 
         it('should require a non-empty array of owners', async () => {
@@ -43,14 +45,14 @@ contract('Owners', accounts => {
             (await contract.isOwner(owner1)).should.equal(true);
             (await contract.isOwner(owner2)).should.equal(true);
             (await contract.isOwner(owner3)).should.equal(false);
-            assert(contract.quorum(), 2);
+            expect(await contract.quorum()).to.be.bignumber.equal(new BN(2));
 
             await contract.changeOwner(owner3, { from: owner1 });
 
             (await contract.isOwner(owner1)).should.equal(false);
             (await contract.isOwner(owner2)).should.equal(true);
             (await contract.isOwner(owner3)).should.equal(true);
-            assert(contract.quorum(), 2);
+            expect(await contract.quorum()).to.be.bignumber.equal(new BN(2));
         });
 
         it('should revert if the list of owners is empty', async () => {
