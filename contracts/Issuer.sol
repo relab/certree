@@ -28,8 +28,7 @@ abstract contract Issuer is IssuerInterface, Owners {
      */
     struct CredentialProof {
         uint256 signed; // Amount of owners who signed
-        bool subjectSigned; // Whether the subject signed
-        // FIXME: redundant time information. Decide on which one to use
+        bool approved; // Whether the subject approved the credential
         uint256 insertedBlock; // The block number of the proof creation
         uint256 blockTimestamp; // The block timestamp of the proof creation
         uint256 nonce; // Increment-only counter of credentials of the same subject
@@ -180,7 +179,7 @@ abstract contract Issuer is IssuerInterface, Owners {
      * @dev Verify if a digest was already certified (i.e. signed by all parties)
      */
     function certified(bytes32 digest) public view override returns (bool) {
-        return issuedCredentials[digest].subjectSigned;
+        return issuedCredentials[digest].approved;
     }
 
     /**
@@ -193,14 +192,14 @@ abstract contract Issuer is IssuerInterface, Owners {
             "Issuer: subject is not related with this credential"
         );
         require(
-            !proof.subjectSigned,
+            !proof.approved,
             "Issuer: subject already signed this credential"
         );
         require(
             proof.signed >= quorum,
             "Issuer: not sufficient quorum of signatures"
         );
-        proof.subjectSigned = true; // All parties signed
+        proof.approved = true;
         emit CredentialSigned(msg.sender, digest, block.number);
     }
 

@@ -17,7 +17,7 @@ contract IssuerMock is Issuer {
 
     function createSignedCredential(address subject, bytes32 digest) public {
         _issue(subject, digest);
-        issuedCredentials[digest].subjectSigned = true;
+        issuedCredentials[digest].approved = true;
     }
 
     function deleteProof(address subject) public {

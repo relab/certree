@@ -36,7 +36,7 @@ contract('Issuer', accounts => {
             await issuer.registerCredential(subject1, digest1, { from: issuer1 });
             const credential = await issuer.issuedCredentials(digest1);
             expect(credential.signed).to.be.bignumber.equal(new BN(1));
-            (credential.subjectSigned).should.equal(false);
+            (credential.approved).should.equal(false);
             expect(await time.latestBlock()).to.be.bignumber.equal(new BN(credential.insertedBlock));
             assert.equal(credential.subject, subject1);
             assert.equal(credential.digest, digest1);
@@ -144,7 +144,7 @@ contract('Issuer', accounts => {
             );
 
             const credential = await issuer.issuedCredentials(digest1);
-            (credential.subjectSigned).should.equal(false);
+            (credential.approved).should.equal(false);
         });
 
         it('should mark a credential proof as signed when it was signed by a quorum and by the subject', async () => {
@@ -153,7 +153,7 @@ contract('Issuer', accounts => {
             await issuer.confirmCredential(digest1, { from: subject1 });
 
             const credential = await issuer.issuedCredentials(digest1);
-            (credential.subjectSigned).should.equal(true);
+            (credential.approved).should.equal(true);
         });
 
         it('should emit an event when a credential proof is signed by all required parties', async () => {
