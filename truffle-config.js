@@ -25,8 +25,17 @@ module.exports = {
 
     mocha: {
         // timeout: 100000,
-        useColors: true
+        useColors: true,
+        reporter: 'eth-gas-reporter',
+        reporterOptions: {
+            currency: 'USD', // NOK, EUR
+            src: "contracts",
+            showMethodSig: true,
+            outputFile: "gas-report.txt"
+        }
     },
+
+    plugins: ["solidity-coverage"],
 
     compilers: {
         solc: {

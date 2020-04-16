@@ -8,6 +8,7 @@
   "scripts": {
     "compile": "truffle compile",
     "console": "truffle console",
+    "coverage": "truffle run coverage --file=\"test/*.js\" --network ganache",
     "migrate": "truffle migrate --reset",
     "migrate:ganache": "truffle migrate --reset --network ganache",
     "ganache-cli": "ganache-cli --deterministic --networkId 5777 --host 127.0.0.1 --port 7545",
@@ -33,9 +34,11 @@
     "eslint-plugin-node": "^11.0.0",
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",
+    "eth-gas-reporter": "^0.2.17",
     "ganache-cli": "^6.9.1",
     "sol2uml": "^1.1.14",
     "solhint": "^2.3.1",
+    "solidity-coverage": "^0.7.4",
     "truffle": "^5.1.18"
   }
 }
