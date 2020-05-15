@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.5.13 <0.7.0;
 pragma experimental ABIEncoderV2;
 
@@ -15,12 +16,14 @@ import "./CredentialSum.sol";
  * issued by untrusted issuers, discouraging fraudulent processes by
  * establishing a casual order between the certificates.
  */
+ // TODO: Ensure interface implementation: https://eips.ethereum.org/EIPS/eip-165
+ // TODO: Allow upgradeable contract using similar approach of https://github.com/PeterBorah/ether-router
 abstract contract Issuer is IssuerInterface, Owners {
     // using SafeMath for uint256;
 
     // Result of an aggregation of all digests of one subject
     using CredentialSum for CredentialSum.Proof;
-    CredentialSum.Proof aggregatedProofs;
+    CredentialSum.Proof root;
 
     /**
      * @dev CredentialProof represents an on-chain proof that a
@@ -35,6 +38,8 @@ abstract contract Issuer is IssuerInterface, Owners {
         address issuer; // The issuer address of this proof
         address subject; // The entity address refered by a proof
         bytes32 digest; // The digest of the credential stored (e.g. Swarm/IPFS hash)
+        bytes32 evidencesRoot; // if is a leaf root is zero otherwise is the result of the aggregation of the digests at the witnesses
+        address[] witnesses; // if witnesses is empty is a leaf notary, otherwise is a list of node notaries
         // TODO: add "bytes signature" field to allow external signatures and on-chain verification
         // TODO: add "uint256 signatureType" to inform what type of signature was used
         // TODO: add "string uri" field to identify the storage type (bzz, ipfs)
@@ -100,7 +105,7 @@ abstract contract Issuer is IssuerInterface, Owners {
      * @return the aggregated proof of a subject
      */
     function getProof(address subject) public view returns (bytes32) {
-        return aggregatedProofs.proofs(subject);
+        return root.proofs(subject);
     }
 
     /**
@@ -111,7 +116,8 @@ abstract contract Issuer is IssuerInterface, Owners {
         return revokedCredentials[digest].revokedBlock != 0;
     }
 
-    function _issue(address subject, bytes32 digest)
+    function _issue(address subject, bytes32 digest, bytes32 eRoot,
+        address[] memory witnesses)
         internal
         onlyOwner
         notRevoked(digest)
@@ -146,7 +152,9 @@ abstract contract Issuer is IssuerInterface, Owners {
                 nonce[subject],
                 msg.sender,
                 subject,
-                digest
+                digest,
+                eRoot,
+                witnesses
             );
             ++nonce[subject];
             _digestsBySubject[subject].push(digest); // append subject's credential hash
@@ -171,7 +179,10 @@ abstract contract Issuer is IssuerInterface, Owners {
         override
         onlyOwner
     {
-        _issue(subject, digest);
+        // TODO: verify the cost of the following approaches
+        // bytes32 zero;
+        // address[] memory none;
+        _issue(subject, digest, bytes32(0), new address[](0));
         emit CredentialSigned(msg.sender, digest, block.number);
     }
 
@@ -246,7 +257,6 @@ abstract contract Issuer is IssuerInterface, Owners {
             digests.length > 0,
             "Issuer: there is no credential for the given subject"
         );
-        // TODO: ignore the revoke credentials in the aggregation
         for (uint256 i = 0; i < digests.length; i++) {
             if (!certified(digests[i])) {
                 return false;
@@ -264,16 +274,16 @@ abstract contract Issuer is IssuerInterface, Owners {
         public
         virtual
         override
-        // onlyOwner
+        onlyOwner
         returns (bytes32)
     {
+        // TODO: ignore the revoke credentials in the aggregation
         bytes32[] memory digests = _digestsBySubject[subject];
         require(
             checkCredentials(digests),
             "Issuer: there are unsigned credentials"
         );
-        // TODO: delete the credentials proofs and digests
-        return aggregatedProofs.generateProof(subject, digests);
+        return root.generateProof(subject, digests);
     }
 
     /**
@@ -286,10 +296,9 @@ abstract contract Issuer is IssuerInterface, Owners {
         override
         returns (bool)
     {
-        bytes32 proof = aggregatedProofs.proofs(subject);
+        bytes32 proof = root.proofs(subject);
         require(proof == digest, "Issuer: proof doesn't match or not exists");
-        return
-            aggregatedProofs.verifySelfProof(
+        return root.verifySelfProof(
                 subject,
                 _digestsBySubject[subject]
             );

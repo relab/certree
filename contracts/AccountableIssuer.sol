@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.5.13 <0.7.0;
 // pragma experimental ABIEncoderV2;
 
@@ -53,29 +54,6 @@ abstract contract AccountableIssuer is Issuer {
     }
 
     /**
-     * @dev collectCredentials collect all the aggregated digests of 
-     * a given subject in all sub-contracts levels.
-     */
-    function collectCredentials(address subject, address[] memory issuersAddresses)
-        public
-        view
-        onlyOwner
-        returns (bytes32[] memory)
-    {
-        require(issuersAddresses.length > 0, "AccountableIssuer: require at least one issuer");
-        bytes32[] memory digests = new bytes32[](issuersAddresses.length);
-        for (uint256 i = 0; i < issuersAddresses.length; i++) {
-            address issuerAddress = address(issuersAddresses[i]);
-            require(isIssuer[issuerAddress], "AccountableIssuer: issuer's address doesn't found");
-            Issuer issuer = Issuer(issuerAddress);
-            bytes32 proof = issuer.getProof(subject);
-            require(proof != bytes32(0), "AccountableIssuer: aggregation on sub-contract not found");
-            digests[i] = proof;
-        }
-        return digests;
-    }
-
-    /**
      * @dev registerCredential collects all subject's credentials and issue a
      * new credential proof iff the aggregation of those credentials on
      * the sub-contracts match the given root (i.e. off-chain aggregation == on-chain aggregation)
@@ -83,22 +61,21 @@ abstract contract AccountableIssuer is Issuer {
     function registerCredential(
         address subject,
         bytes32 digest,
-        bytes32 digestRoot,
-        address[] memory issuersAddresses
+        address[] memory witnesses
     ) public onlyOwner {
-        // FIXME: this method doesn't allow further aggregation
-        // consider remove this check. What are the consequences of it?
-        require(aggregatedProofs.proofs(subject) == bytes32(0), "AccountableIssuer: credentials already aggregated, not possible to issue new credentials");
-        bytes32[] memory d = collectCredentials(subject, issuersAddresses);
-        bytes32[] memory digests = new bytes32[](d.length + 1);
-        uint256 i = 0;
-        for (; i < d.length; i++) {
-            digests[i] = d[i];
+        require(witnesses.length > 0, "AccountableIssuer: require at least one issuer");
+        bytes32[] memory roots = new bytes32[](witnesses.length);
+        for (uint256 i = 0; i < witnesses.length; i++) {
+            address issuerAddress = address(witnesses[i]);
+            require(isIssuer[issuerAddress], "AccountableIssuer: issuer's address doesn't found");
+            Issuer issuer = Issuer(issuerAddress);
+            bytes32 root = issuer.getProof(subject);
+            require(root != bytes32(0), "AccountableIssuer: aggregation on sub-contract not found");
+            roots[i] = root;
         }
-        // Add current credential
-        digests[i] = digest;
-        require(CredentialSum.verifyProof(digestRoot, digests), "AccountableIssuer: given proof could not be generated with existing credentials");
-        _issue(subject, digest);
+        // FIXME: consider use sha256(abi.encodePacked(roots, digests));
+        bytes32 evidencesRoot = keccak256(abi.encode(roots));
+        _issue(subject, digest, evidencesRoot, witnesses);
         emit CredentialSigned(msg.sender, digest, block.number);
     }
 
@@ -108,14 +85,14 @@ abstract contract AccountableIssuer is Issuer {
      * of all stored credentials of a particular subject in all given sub-contracts
      * @param subject is the subject referred by all credentials to be verified
      * @param proofs is an array containing the resulted aggregated hashes of
-     * all issuers in "issuersAddresses"
-     * @param issuersAddresses is an array with the address of all authorized
+     * all issuers in "witnesses"
+     * @param witnesses is an array with the address of all authorized
      * issuers that stores the subject credentials
      */
-    function verifyCredential(address subject, bytes32[] memory proofs, address[] memory issuersAddresses) public view returns(bool) {
-        require(issuersAddresses.length > 0, "AccountableIssuer: require at least one issuer");
-        for (uint256 i = 0; i < issuersAddresses.length; i++) {
-            address issuerAddress = address(issuersAddresses[i]);
+    function verifyCredential(address subject, bytes32[] memory proofs, address[] memory witnesses) public view returns(bool) {
+        require(witnesses.length > 0, "AccountableIssuer: require at least one issuer");
+        for (uint256 i = 0; i < witnesses.length; i++) {
+            address issuerAddress = address(witnesses[i]);
             require(isIssuer[issuerAddress], "AccountableIssuer: address not registered");
             Issuer issuer = Issuer(issuerAddress);
             //verify leaves construction

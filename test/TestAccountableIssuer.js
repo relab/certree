@@ -5,7 +5,7 @@ const Issuer = artifacts.require('IssuerMock');
 const AccountableIssuer = artifacts.require('AccountableIssuerMock');
 const Owners = artifacts.require('Owners');
 
-async function generateCredentials(contract, numberOfIssuers, acIssuerOwner, issuerOwners, subject) {
+async function generateLeafCredentials(contract, numberOfIssuers, acIssuerOwner, issuerOwners, subject) {
     let issuerAddresses = [];
     var certsPerIssuer = [];
 
@@ -16,7 +16,7 @@ async function generateCredentials(contract, numberOfIssuers, acIssuerOwner, iss
 
         for (j = 0; j < i + numberOfIssuers; j++) {
             let certificateDigest = web3.utils.keccak256(web3.utils.toHex(`certificate${i}-${j}`));
-            await issuerContract.createSignedCredential(subject, certificateDigest, { from: issuerOwners[0] });
+            await issuerContract.createSignedLeafCredential(subject, certificateDigest, { from: issuerOwners[0] });
             await time.increase(time.duration.seconds(1));
         }
         certsPerIssuer.push(await issuerContract.digestsBySubject(subject));
@@ -83,43 +83,13 @@ contract('AccountableIssuer', accounts => {
         });
     });
 
-    describe('collectCredentials', () => {
-        let issuerAddresses = [];
-        let expectedRoot = null;
-
-        beforeEach(async () => {
-            acIssuer = await AccountableIssuer.new([issuer1], 1);
-            ({ issuerAddresses } = await generateCredentials(acIssuer, 3, issuer1, [issuer3], subject));
-        });
-
-        it('should revert if the given issuer list is empty', async () => {
-            await expectRevert(acIssuer.collectCredentials(subject, []), "AccountableIssuer: require at least one issuer");
-        });
-
-        it('should revert if given issuer address isn\'t registered', async () => {
-            await expectRevert(acIssuer.collectCredentials(subject, ["0x6e29A025E9DDfE53073C9bEdBff3cb057bC0f44A"]), "AccountableIssuer: issuer's address doesn't found");
-        });
-
-        it('should revert if there is no aggregation on sub-contracts', async () => {
-            await expectRevert(acIssuer.collectCredentials(subject, issuerAddresses), "AccountableIssuer: aggregation on sub-contract not found");
-        });
-
-        it('should collect all sub-contract aggregated credentials', async () => {
-            let expected = await aggregateCredentials(acIssuer, issuer1, subject);
-
-            let collected = await acIssuer.collectCredentials.call(subject, issuerAddresses);
-
-            expect(collected).to.have.same.members(expected);
-        });
-    });
-
     describe('issuing root credential', () => {
         let issuerAddresses, aggregationsPerIssuer = [];
         let expectedRoot = null;
 
         beforeEach(async () => {
             acIssuer = await AccountableIssuer.new([issuer1, issuer2], 2);
-            ({ issuerAddresses } = await generateCredentials(acIssuer, 2, issuer1, [issuer3], subject));
+            ({ issuerAddresses } = await generateLeafCredentials(acIssuer, 2, issuer1, [issuer3], subject));
 
             aggregationsPerIssuer = await aggregateCredentials(acIssuer, issuer1, subject);
 
@@ -165,7 +135,7 @@ contract('AccountableIssuer', accounts => {
 
         beforeEach(async () => {
             acIssuer = await AccountableIssuer.new([issuer1], 1);
-            ({ issuerAddresses } = await generateCredentials(acIssuer, 2, issuer1, [issuer2], subject));
+            ({ issuerAddresses } = await generateLeafCredentials(acIssuer, 2, issuer1, [issuer2], subject));
 
             aggregationsPerIssuer = await aggregateCredentials(acIssuer, issuer1, subject);
         });

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.5.13 <0.7.0;
 
 import "../Issuer.sol";
@@ -15,13 +16,13 @@ contract IssuerMock is Issuer {
         isOwner[owner] = true;
     }
 
-    function createSignedCredential(address subject, bytes32 digest) public {
-        _issue(subject, digest);
+    function createSignedLeafCredential(address subject, bytes32 digest) public {
+        _issue(subject, digest, bytes32(0), new address[](0));
         issuedCredentials[digest].approved = true;
     }
 
     function deleteProof(address subject) public {
-        aggregatedProofs._proofs[subject] = bytes32(0);
+        root._proofs[subject] = bytes32(0);
     }
 
 }
