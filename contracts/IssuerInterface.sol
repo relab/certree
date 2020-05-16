@@ -60,13 +60,4 @@ interface IssuerInterface {
      */
     function aggregateCredentials(address subject) external returns (bytes32);
 
-    /**
-     * @dev verifyCredential verifies if a given credential 
-     * (i.e. represented by it's digest) corresponds to the aggregation 
-     * of all stored credentials of a particular subject.
-     */
-    function verifyCredential(address subject, bytes32 digest)
-        external
-        view
-        returns (bool);
 }

@@ -397,21 +397,21 @@ contract('Issuer', accounts => {
         });
 
         it('should successfully verify the given credential', async () => {
-            issuer.verifyCredential(subject1, expected);
+            issuer.verifyCredentialLeaf(subject1, expected);
             const proof = await issuer.getProof(subject1);
             (proof).should.equal(expected);
         });
 
         it('should revert if given credentials don\'t match the stored proofs', async () => {
             await expectRevert(
-                issuer.verifyCredential(subject1, digest1),
+                issuer.verifyCredentialLeaf(subject1, digest1),
                 'Issuer: proof doesn\'t match or not exists'
             );
         });
 
         it('should revert if there is no credential to be verified for a given subject', async () => {
             await expectRevert(
-                issuer.verifyCredential(subject2, expected),
+                issuer.verifyCredentialLeaf(subject2, expected),
                 'Issuer: proof doesn\'t match or not exists'
             );
         });

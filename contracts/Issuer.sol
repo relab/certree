@@ -20,10 +20,11 @@ import "./CredentialSum.sol";
  // TODO: Allow upgradeable contract using similar approach of https://github.com/PeterBorah/ether-router
 abstract contract Issuer is IssuerInterface, Owners {
     // using SafeMath for uint256;
+    bool private _isLeaf = true;
 
     // Result of an aggregation of all digests of one subject
     using CredentialSum for CredentialSum.Proof;
-    CredentialSum.Proof root;
+    CredentialSum.Proof aggregatedProof;
 
     /**
      * @dev CredentialProof represents an on-chain proof that a
@@ -38,11 +39,8 @@ abstract contract Issuer is IssuerInterface, Owners {
         address issuer; // The issuer address of this proof
         address subject; // The entity address refered by a proof
         bytes32 digest; // The digest of the credential stored (e.g. Swarm/IPFS hash)
-        bytes32 evidencesRoot; // if is a leaf root is zero otherwise is the result of the aggregation of the digests at the witnesses
+        bytes32 evidencesRoot; // if is a leaf aggregatedProof is zero otherwise is the result of the aggregation of the digests at the witnesses
         address[] witnesses; // if witnesses is empty is a leaf notary, otherwise is a list of node notaries
-        // TODO: add "bytes signature" field to allow external signatures and on-chain verification
-        // TODO: add "uint256 signatureType" to inform what type of signature was used
-        // TODO: add "string uri" field to identify the storage type (bzz, ipfs)
     }
 
     /**
@@ -75,11 +73,11 @@ abstract contract Issuer is IssuerInterface, Owners {
     /**
      * @dev Constructor creates an Issuer contract
      */
-    constructor(address[] memory owners, uint256 quorum)
+    constructor(address[] memory owners, uint256 quorum, bool isLeaf)
         public
         Owners(owners, quorum)
     {
-        // solhint-disable-previous-line no-empty-blocks
+        _isLeaf = isLeaf;
     }
 
     modifier notRevoked(bytes32 digest) {
@@ -88,6 +86,13 @@ abstract contract Issuer is IssuerInterface, Owners {
             "Issuer: this credential was already revoked"
         );
         _;
+    }
+
+    /**
+     * @return true if the issuer contract is a leaf
+     */
+    function isLeaf() public view returns(bool) {
+        return _isLeaf;
     }
 
     /**
@@ -105,7 +110,7 @@ abstract contract Issuer is IssuerInterface, Owners {
      * @return the aggregated proof of a subject
      */
     function getProof(address subject) public view returns (bytes32) {
-        return root.proofs(subject);
+        return aggregatedProof.proofs(subject);
     }
 
     /**
@@ -269,7 +274,6 @@ abstract contract Issuer is IssuerInterface, Owners {
     /**
      * @dev aggregateCredentials aggregates the digests of a given subject on the credential level
      */
-    // TODO: only owner should be able to aggregate? In theory anyone should be able to call it, since it only operate over already valid data to add the aggregated value, I guess the method is safe to be performed by anyone, even though it writes in the contract state, but of course, this will change the msg.sender.
     function aggregateCredentials(address subject)
         public
         virtual
@@ -283,24 +287,23 @@ abstract contract Issuer is IssuerInterface, Owners {
             checkCredentials(digests),
             "Issuer: there are unsigned credentials"
         );
-        return root.generateProof(subject, digests);
+        return aggregatedProof.generateProof(subject, digests);
     }
 
     /**
-     * @dev verifyCredential verifies if the credential of a given subject
-     * was correctly generated
+     * @dev verifyCredentialLeaf verifies if the credential of a given subject
+     * was correctly generated based on the root contract
      */
-    function verifyCredential(address subject, bytes32 digest)
+    function verifyCredentialLeaf(address subject, bytes32 croot)
         public
         view
-        override
         returns (bool)
     {
-        bytes32 proof = root.proofs(subject);
-        require(proof == digest, "Issuer: proof doesn't match or not exists");
-        return root.verifySelfProof(
-                subject,
-                _digestsBySubject[subject]
-            );
+        bytes32 proof = aggregatedProof.proofs(subject);
+        require(proof == croot, "Issuer: proof doesn't match or not exists");
+        return aggregatedProof.verifySelfProof(
+            subject,
+            _digestsBySubject[subject]
+        );
     }
 }

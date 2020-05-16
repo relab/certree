@@ -6,7 +6,7 @@ import "../Issuer.sol";
 contract IssuerMock is Issuer {
     constructor(address[] memory owners, uint256 quorum)
         public
-        Issuer(owners, quorum)
+        Issuer(owners, quorum, true)
     {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -22,7 +22,7 @@ contract IssuerMock is Issuer {
     }
 
     function deleteProof(address subject) public {
-        root._proofs[subject] = bytes32(0);
+        aggregatedProof._proofs[subject] = bytes32(0);
     }
 
 }
