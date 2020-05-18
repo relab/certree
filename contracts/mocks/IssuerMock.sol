@@ -11,11 +11,6 @@ contract IssuerMock is Issuer {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function setOwner(address owner) public {
-        owners.push(owner);
-        isOwner[owner] = true;
-    }
-
     function createSignedLeafCredential(address subject, bytes32 digest) public {
         _issue(subject, digest, bytes32(0), new address[](0));
         issuedCredentials[digest].approved = true;

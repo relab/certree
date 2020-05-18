@@ -10,8 +10,11 @@ async function generateLeafCredentials(contract, numberOfIssuers, acIssuerOwner,
     var certsPerIssuer = [];
 
     for (i = 0; i < numberOfIssuers; i++) {
-        let { logs } = await contract.createIssuer(issuerOwners, issuerOwners.length, { from: acIssuerOwner });
-        let issuerContract = await Issuer.at(logs[0].args.issuerAddress);
+        let issuerContract = await Issuer.new(issuerOwners, issuerOwners.length, { from: acIssuerOwner });
+        let { logs } = await contract.addIssuer(issuerContract.address);
+        // let issuerContract = await Issuer.at(logs[0].args.issuerAddress);
+        let addr = (logs.find(e => e.event == "IssuerAdded")).args.issuerAddress;
+        (issuerContract.address).should.equal(addr);
         issuerAddresses.push(issuerContract.address);
 
         for (j = 0; j < i + numberOfIssuers; j++) {
@@ -24,10 +27,20 @@ async function generateLeafCredentials(contract, numberOfIssuers, acIssuerOwner,
     return { issuerAddresses, certsPerIssuer };
 }
 
-async function aggregateCredentials(contract, acIssuerOwner, subject) {
-    let { logs } = await contract.generateAggregation(subject, { from: acIssuerOwner });
+async function aggregateCredentialsAtIssuer(issuerContract, owner, subject) {
+    await issuerContract.aggregateCredentials(subject, { from: owner });
+    return await issuerContract.aggregateCredentials.call(subject, { from: owner });
+}
 
-    let aggregationsPerIssuer = (logs.find(e => e.event == "AggregationCreated")).args.certificates;
+async function aggregateAllCredentials(acIssuer, acIssuerOwner, subject) {
+    let aggregationsPerIssuer = [];
+    let issuerAddresses = await acIssuer.issuers();
+    for (i = 0; i < issuerAddresses.length; i++) {
+        let issuerContract = await Issuer.at(issuerAddresses[i]);
+        let issuerOwners = await issuerContract.owners();
+        aggregation = await aggregateCredentialsAtIssuer(issuerContract, issuerOwners[0], subject);
+        aggregationsPerIssuer.push(aggregation);
+    }
     return aggregationsPerIssuer
 }
 
@@ -91,7 +104,7 @@ contract('AccountableIssuer', accounts => {
             acIssuer = await AccountableIssuer.new([issuer1, issuer2], 2);
             ({ issuerAddresses } = await generateLeafCredentials(acIssuer, 2, issuer1, [issuer3], subject));
 
-            aggregationsPerIssuer = await aggregateCredentials(acIssuer, issuer1, subject);
+            aggregationsPerIssuer = await aggregateAllCredentials(acIssuer, issuer1, subject);
 
             aggregationsPerIssuer.push(digest);
             expectedRoot = hash(aggregationsPerIssuer);
@@ -137,7 +150,7 @@ contract('AccountableIssuer', accounts => {
             acIssuer = await AccountableIssuer.new([issuer1], 1);
             ({ issuerAddresses } = await generateLeafCredentials(acIssuer, 2, issuer1, [issuer2], subject));
 
-            aggregationsPerIssuer = await aggregateCredentials(acIssuer, issuer1, subject);
+            aggregationsPerIssuer = await aggregateAllCredentials(acIssuer, issuer1, subject);
         });
 
         it('should successfully verify a valid set of credentials', async () => {

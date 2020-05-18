@@ -7,10 +7,12 @@ pragma solidity >=0.5.13 <0.7.0;
 contract Owners {
     // Map of owners
     mapping(address => bool) public isOwner;
-    address[] public owners;
+
+    // List of owners
+    address[] private _owners;
 
     // The required number of owners to authorize actions
-    uint256 public quorum;
+    uint256 private _quorum;
 
     // Logged when any owner change.
     event OwnerChanged(address indexed oldOwner, address indexed newOwner);
@@ -22,33 +24,47 @@ contract Owners {
 
     /**
      * @dev Constructor
-     * @param _owners is the array of all owners
-     * @param _quorum is the required number of owners to perform actions
+     * @param ownersList is the array of all owners
+     * @param quorumSize is the required number of owners to perform actions
      */
-    constructor(address[] memory _owners, uint256 _quorum) public {
+    constructor(address[] memory ownersList, uint256 quorumSize) public {
         require(
-            _owners.length > 0 && _owners.length < 256,
+            ownersList.length > 0 && ownersList.length < 256,
             "Owners: not enough owners"
         );
         require(
-            _quorum > 0 && _quorum <= _owners.length,
+            quorumSize > 0 && quorumSize <= ownersList.length,
             "Owners: quorum out of range"
         );
-        for (uint256 i = 0; i < _owners.length; ++i) {
+        for (uint256 i = 0; i < ownersList.length; ++i) {
             // prevent duplicate and zero value address attack
-            assert(!isOwner[_owners[i]] && _owners[i] != address(0));
-            isOwner[_owners[i]] = true;
+            assert(!isOwner[ownersList[i]] && ownersList[i] != address(0));
+            isOwner[ownersList[i]] = true;
         }
-        owners = _owners;
-        quorum = _quorum;
+        _owners = ownersList;
+        _quorum = quorumSize;
     }
 
     /**
-     * @dev OwnersLength
-     * @return the length of the owners array
+     * @return the list of owners
      */
-    function ownersLength() public view returns (uint256) {
-        return owners.length;
+    function owners()
+        public
+        view
+        returns (address[] memory)
+    {
+        return _owners;
+    }
+
+    /**
+     * @return the quorum size
+     */
+    function quorum()
+        public
+        view
+        returns (uint256)
+    {
+        return _quorum;
     }
 
     /**
@@ -56,23 +72,25 @@ contract Owners {
      * @param newOwner address of new owner
      */
     function changeOwner(address newOwner) public onlyOwner {
-        require(owners.length > 0, "Owners: not enough owners");
         require(
             !isOwner[newOwner] && newOwner != address(0),
             "Owners: invalid address given"
         );
-        address[] memory _owners = new address[](owners.length);
+        // Owners should never be empty
+        assert(_owners.length > 0);
+        address[] memory ownersList = new address[](_owners.length);
         // create a new array of owners replacing the old one
-        for (uint256 i = 0; i < owners.length; ++i) {
-            if (owners[i] != msg.sender) {
-                _owners[i] = owners[i];
+        for (uint256 i = 0; i < _owners.length; ++i) {
+            if (_owners[i] != msg.sender) {
+                ownersList[i] = _owners[i];
             } else {
-                _owners[i] = newOwner;
+                ownersList[i] = newOwner;
             }
         }
-        assert(_owners.length == quorum);
+        // The quorum size should never change
+        assert(ownersList.length == _quorum);
         emit OwnerChanged(msg.sender, newOwner);
-        owners = _owners;
+        _owners = ownersList;
         isOwner[newOwner] = true;
         isOwner[msg.sender] = false;
     }

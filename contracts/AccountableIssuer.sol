@@ -16,7 +16,7 @@ import "./CredentialSum.sol";
  * https://github.com/ethereum/EIPs/blob/master/EIPS/eip-712.md
  */
 abstract contract AccountableIssuer is Issuer {
-    address[] public issuers;
+    address[] private _issuers;
 
     // Map of all issuers sub-contracts
     mapping(address => bool) public isIssuer;
@@ -40,7 +40,18 @@ abstract contract AccountableIssuer is Issuer {
      * @return the length of the issuers array
      */
     function issuersLength() public view returns (uint256) {
-        return issuers.length;
+        return _issuers.length;
+    }
+
+    /**
+     * @return the list of issuers
+     */
+    function issuers()
+        public
+        view
+        returns (address[] memory)
+    {
+        return _issuers;
     }
 
     function addIssuer(address issuerAddress) onlyOwner public {
@@ -49,7 +60,7 @@ abstract contract AccountableIssuer is Issuer {
         Issuer issuer = Issuer(issuerAddress);
         assert(address(issuer) == issuerAddress);
         isIssuer[issuerAddress] =  true;
-        issuers.push(issuerAddress);
+        _issuers.push(issuerAddress);
         emit IssuerAdded(issuerAddress, msg.sender);
     }
 

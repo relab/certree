@@ -93,11 +93,10 @@ contract('Issuer', accounts => {
             await issuer.registerCredential(subject1, digest1, { from: issuer1 });
             await issuer.registerCredential(subject1, digest1, { from: issuer2 });
 
-            const length = await issuer.ownersLength();
+            let owners = await issuer.owners();
             let quorum = await issuer.quorum();
-            for (let i = 0; i < length; i++) {
-                const owner = await issuer.owners(i);
-                const signed = await issuer.ownersSigned(digest1, owner);
+            for (let i = 0; i < owners.length; i++) {
+                const signed = await issuer.ownersSigned(digest1, owners[i]);
                 if (signed) --quorum;
             }
             (quorum).should.equal(0);

@@ -211,8 +211,9 @@ abstract contract Issuer is IssuerInterface, Owners {
             !proof.approved,
             "Issuer: subject already signed this credential"
         );
+        assert(quorum() > 0);
         require(
-            proof.signed >= quorum,
+            proof.signed >= quorum(),
             "Issuer: not sufficient quorum of signatures"
         );
         proof.approved = true;

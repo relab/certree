@@ -55,16 +55,9 @@ contract('Owners', accounts => {
             expect(await contract.quorum()).to.be.bignumber.equal(new BN(2));
         });
 
-        it('should revert if the list of owners is empty', async () => {
-            await contract.deleteOwners();
-            await expectRevert(contract.changeOwner(owner3, { from: owner1 }), "Owners: not enough owners");
-        });
-
-
         it('should revert if the newOwner is already an owner', async () => {
             await expectRevert(contract.changeOwner(owner2, { from: owner1 }), "Owners: invalid address given");
         });
-
 
         it('should revert if the given address is invalid', async () => {
             await expectRevert(contract.changeOwner(constants.ZERO_ADDRESS, { from: owner1 }), "Owners: invalid address given");
