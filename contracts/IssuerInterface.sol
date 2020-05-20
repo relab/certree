@@ -27,6 +27,26 @@ interface IssuerInterface {
     );
 
     /**
+     * @return true if the issuer contract is a leaf
+     */
+    function isLeaf() external view returns(bool);
+
+    /**
+     * @return the registered digests of a subject
+     */
+    function digestsBySubject(address subject) external view returns (bytes32[] memory);
+
+    /**
+     * @return the aggregated proof of a subject
+     */
+    function getProof(address subject) external view returns (bytes32);
+
+    /**
+     * @return the witnesses of a proof
+     */
+    function getWitnesses(bytes32 digest) external view returns(address[] memory);
+
+    /**
      * @dev isRevoked checks if the credential was revoked based on it's digest.
      */
     function isRevoked(bytes32 digest) external view returns (bool); //
@@ -55,9 +75,19 @@ interface IssuerInterface {
     function revokeCredential(bytes32 digest, bytes32 reason) external;
 
     /**
+     * @dev verifies if a list of digests are certified
+     */
+    function checkCredentials(bytes32[] calldata digests) external view returns (bool);
+
+    /**
      * @dev aggregateCredentials perform an aggregation of all credentials
      * of a subject in the contract level. 
      */
     function aggregateCredentials(address subject) external returns (bytes32);
 
+    /**
+     * @dev verifyCredentialLeaf verifies if the credential of a given subject
+     * was correctly generated based on the root contract
+     */
+    function verifyCredentialLeaf(address subject, bytes32 croot) external view returns (bool);
 }

@@ -2,6 +2,8 @@
 pragma solidity >=0.5.13 <0.7.0;
 // pragma experimental ABIEncoderV2;
 
+import "./ERC165.sol";
+import "./IssuerInterface.sol";
 import "./Issuer.sol";
 import "./CredentialSum.sol";
 // import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -54,14 +56,40 @@ abstract contract AccountableIssuer is Issuer {
         return _issuers;
     }
 
+    /**
+     * @dev addIssuer adds a contract as an issuer.
+     * This function checks if the account address implements the
+     * IssuerInterfaces, but this isn't sufficient to ensure the
+     * correctness of the implementation itself.
+     * Malicious contracts that match the IssuerInterface can still
+     * be added and further checks of the contract code should be
+     * performed before approval of the inclusion.
+     */
+    // TODO: require a quorum of owners
     function addIssuer(address issuerAddress) onlyOwner public {
         require(!isIssuer[issuerAddress], "AccountableIssuer: issuer already added");
-        // TODO: check if is an issuer contract before add it?
-        Issuer issuer = Issuer(issuerAddress);
-        assert(address(issuer) == issuerAddress);
+        (bool success, bool result) = _callSupportsIssuerInterface(issuerAddress);
+        assert(success && result);
         isIssuer[issuerAddress] =  true;
         _issuers.push(issuerAddress);
         emit IssuerAdded(issuerAddress, msg.sender);
+    }
+
+    /**
+     * @dev _callSupportsIssuerInterface determines whether the
+     * contract at account supports IssuerInterface as specified in ERC-165.
+     * @param account The address of the contract to query
+     * @return success true if the staticcall succeeded, false otherwise
+     * @return result true if `success` and the contract at account
+     * indicates support of the IssuerInterface, false otherwise
+     */
+    function _callSupportsIssuerInterface(address account) internal view returns (bool, bool)
+    {
+        bytes memory encodedParams = abi.encodeWithSelector(type(ERC165).interfaceId, type(IssuerInterface).interfaceId);
+        (bool success, bytes memory result) = account.staticcall{ gas: 30000 }(encodedParams);
+        // staticcall outputs are 32 bytes long
+        if (result.length < 32) return (false, false);
+        return (success, abi.decode(result, (bool)));
     }
 
     /**

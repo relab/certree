@@ -2,10 +2,10 @@
 pragma solidity >=0.5.13 <0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "./ERC165.sol";
 import "./IssuerInterface.sol";
 import "./Owners.sol";
 import "./CredentialSum.sol";
-
 
 // import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -18,7 +18,7 @@ import "./CredentialSum.sol";
  */
  // TODO: Ensure interface implementation: https://eips.ethereum.org/EIPS/eip-165
  // TODO: Allow upgradeable contract using similar approach of https://github.com/PeterBorah/ether-router
-abstract contract Issuer is IssuerInterface, Owners {
+abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     // using SafeMath for uint256;
     bool private _isLeaf = true;
 
@@ -88,10 +88,14 @@ abstract contract Issuer is IssuerInterface, Owners {
         _;
     }
 
+    function supportsInterface(bytes4 interfaceId) override external pure returns (bool) {
+        return interfaceId == type(ERC165).interfaceId || interfaceId == type(IssuerInterface).interfaceId;
+    }
+
     /**
      * @return true if the issuer contract is a leaf
      */
-    function isLeaf() public view returns(bool) {
+    function isLeaf() override public view returns(bool) {
         return _isLeaf;
     }
 
@@ -101,6 +105,7 @@ abstract contract Issuer is IssuerInterface, Owners {
     function digestsBySubject(address subject)
         public
         view
+        override
         returns (bytes32[] memory)
     {
         return _digestsBySubject[subject];
@@ -109,8 +114,15 @@ abstract contract Issuer is IssuerInterface, Owners {
     /**
      * @return the aggregated proof of a subject
      */
-    function getProof(address subject) public view returns (bytes32) {
+    function getProof(address subject) public view override returns (bytes32) {
         return aggregatedProof.proofs(subject);
+    }
+
+    /**
+     * @return the witnesses of a proof
+     */
+    function getWitnesses(bytes32 digest) public view override returns(address[] memory){
+        return issuedCredentials[digest].witnesses;
     }
 
     /**
@@ -257,6 +269,7 @@ abstract contract Issuer is IssuerInterface, Owners {
     function checkCredentials(bytes32[] memory digests)
         public
         view
+        override
         returns (bool)
     {
         require(
@@ -298,6 +311,7 @@ abstract contract Issuer is IssuerInterface, Owners {
     function verifyCredentialLeaf(address subject, bytes32 croot)
         public
         view
+        override
         returns (bool)
     {
         bytes32 proof = aggregatedProof.proofs(subject);
