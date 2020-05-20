@@ -65,7 +65,8 @@ abstract contract AccountableIssuer is Issuer {
      * be added and further checks of the contract code should be
      * performed before approval of the inclusion.
      */
-    // TODO: require a quorum of owners
+    // TODO: - require a quorum of owners
+    //       - not allow add issuer where the sender is an owner
     function addIssuer(address issuerAddress) onlyOwner public {
         require(!isIssuer[issuerAddress], "AccountableIssuer: issuer already added");
         (bool success, bool result) = _callSupportsIssuerInterface(issuerAddress);
@@ -156,7 +157,7 @@ abstract contract AccountableIssuer is Issuer {
      * sub-trees were correctly built.
      */
     function verifyCredentialTree(address subject, bytes32 croot) public view returns(bool) {
-        require(croot != bytes32(0), "AccountableIssuer: certification period didn't finish yet");
+        require(croot != bytes32(0), "AccountableIssuer: root proof should not be zero");
         if (!super.verifyCredentialLeaf(subject, croot)) {
             return false;
         }
