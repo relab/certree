@@ -1,7 +1,7 @@
 const { time } = require('@openzeppelin/test-helpers');
 
-const Issuer = artifacts.require('IssuerMock');
-const AccountableIssuer = artifacts.require('AccountableIssuerMock');
+const Issuer = artifacts.require('IssuerImpl');
+const AccountableIssuer = artifacts.require('AccountableIssuerImpl');
 
 async function createLeafIssuer(creator, owners) {
     let contract = await Issuer.new(owners, owners.length, { from: creator });
@@ -129,13 +129,13 @@ async function generateLeafCredentials(leaves, subjects, n) {
     return generatedLeaves;
 };
 
-// return hash(bytes32[]) performed by the contract
+// return hashByteArray(bytes32[]) performed by the contract
 async function aggregateLeaf(issuerContract, owner, subject) {
     await issuerContract.aggregateCredentials(subject, { from: owner });
     return await issuerContract.getProof(subject);
 };
 
-// returns [ hash(bytes32[]), bytes32[] ]
+// returns [ hashByteArray(bytes32[]), bytes32[] ]
 async function aggregateSubTree(rootContract, subject) {
     let rootPerIssuer = []; // evidences
     let issuerAddresses = await rootContract.issuers();
@@ -145,7 +145,7 @@ async function aggregateSubTree(rootContract, subject) {
         aggregation = await aggregateLeaf(issuerContract, issuerOwners[0], subject);
         rootPerIssuer.push(aggregation);
     }
-    return [hash(rootPerIssuer), rootPerIssuer];
+    return [hashByteArray(rootPerIssuer), rootPerIssuer];
 };
 
 // @witnesses: [{ address: witnessAddress, certs: [{ subject: subjectAddress, digests: bytes32[] }] }]
@@ -155,7 +155,7 @@ function computeSubTree(witnesses) {
     for (w of witnesses) {
         var rootPerSubject = [];
         for (c of w.certs) { // aggregate all certs of witness w per subject
-            rootPerSubject.push({ subject: c.subject, root: hash(c.digests) });
+            rootPerSubject.push({ subject: c.subject, root: hashByteArray(c.digests) });
         }
         rootPerWitness.push({ address: w.address, roots: rootPerSubject });
     }
@@ -168,8 +168,12 @@ function aggregationsOf(rootPerWitness, subject) {
             .map(c => c.root)).flat();
 }
 
-function hash(certs) {
-    return web3.utils.keccak256(web3.eth.abi.encodeParameter('bytes32[]', certs));
+function hash(data) {
+    return web3.utils.keccak256(data);
+}
+
+function hashByteArray(byteArray) {
+    return hash(web3.eth.abi.encodeParameter('bytes32[]', byteArray));
 }
 
 module.exports = {
@@ -183,5 +187,6 @@ module.exports = {
     computeSubTree: computeSubTree,
     aggregationsOf: aggregationsOf,
     createLeaves: createLeaves,
-    hash: hash
+    hash: hash,
+    hashByteArray: hashByteArray
 };

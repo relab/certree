@@ -1,7 +1,7 @@
 const { BN, constants, expectRevert, expectEvent } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 
-const Owners = artifacts.require('OwnersMock');
+const Owners = artifacts.require('Owners');
 
 contract('Owners', accounts => {
     const [owner1, owner2, owner3] = accounts;

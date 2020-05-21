@@ -3,9 +3,9 @@ pragma solidity >=0.6.0 <0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../AccountableIssuer.sol";
-import "./IssuerMock.sol";
+import "./IssuerImpl.sol";
 
-contract AccountableIssuerMock is AccountableIssuer {
+contract AccountableIssuerImpl is AccountableIssuer {
     // Logged when an issuer created.
     event IssuerCreated(
         address indexed issuerAddress,
@@ -20,7 +20,7 @@ contract AccountableIssuerMock is AccountableIssuer {
     }
 
     function createIssuer(address[] memory owners, uint256 quorum) public {
-        IssuerMock issuer = new IssuerMock(owners, quorum);
+        IssuerImpl issuer = new IssuerImpl(owners, quorum);
         addIssuer(address(issuer));
         emit IssuerCreated(address(issuer), msg.sender);
     }

@@ -95,6 +95,8 @@ abstract contract AccountableIssuer is Issuer {
         for (uint256 i = 0; i < witnesses.length; i++) {
             address issuerAddress = address(witnesses[i]);
             require(isIssuer[issuerAddress], "AccountableIssuer: issuer's address doesn't found");
+            bool success = ERC165Checker.supportsInterface(issuerAddress, type(IssuerInterface).interfaceId);
+            assert(success);
             Issuer issuer = Issuer(issuerAddress);
             bytes32 root = issuer.getProof(subject);
             require(root != bytes32(0), "AccountableIssuer: aggregation on sub-contract not found");
@@ -115,6 +117,8 @@ abstract contract AccountableIssuer is Issuer {
      * @param witnesses is an array with the address of all authorized
      * issuers that stores the subject sub-credentials
      */
+    // TODO: certify that the methods exists on the witnesses contracts before
+    // call them. Implements AccountableIssuerInterface
     function verifyCredentialNode(address subject, bytes32 croot, address[] memory witnesses) internal view returns(bool) {
         require(croot != bytes32(0), "AccountableIssuer: root cannot be null");
         bytes32[] memory proofs = new bytes32[](witnesses.length);
@@ -149,8 +153,7 @@ abstract contract AccountableIssuer is Issuer {
             return false;
         }
         bytes32[] memory digests = digestsBySubject(subject);
-        require(digests.length > 0, "AccountableIssuer: there is no credential to be verified");
-        // Assumes that nodes cannot have credential proofs without at least one witness.
+        assert(digests.length > 0);
         for (uint256 i = 0; i < digests.length; i++) {
             CredentialProof memory c = issuedCredentials[digests[i]];
             assert(c.insertedBlock != 0); // credentials must exist

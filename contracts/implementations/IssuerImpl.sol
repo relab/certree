@@ -3,7 +3,7 @@ pragma solidity >=0.6.0 <0.7.0;
 
 import "../Issuer.sol";
 
-contract IssuerMock is Issuer {
+contract IssuerImpl is Issuer {
     constructor(address[] memory owners, uint256 quorum)
         public
         Issuer(owners, quorum, true)

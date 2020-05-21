@@ -1,58 +1,14 @@
-const { BN, expectEvent, expectRevert, time } = require('@openzeppelin/test-helpers');
+const { BN, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
+const { createNotary, createLeaves, generateLeafCredentials, aggregateSubTree, hash, hashByteArray } = require('./helpers/test-helpers');
 
-const Issuer = artifacts.require('IssuerMock');
-const AccountableIssuer = artifacts.require('AccountableIssuerMock');
-const Owners = artifacts.require('Owners');
-
-async function generateLeafCredentials(contract, numberOfIssuers, acIssuerOwner, issuerOwners, subject) {
-    let issuerAddresses = [];
-    var certsPerIssuer = [];
-
-    for (i = 0; i < numberOfIssuers; i++) {
-        let issuerContract = await Issuer.new(issuerOwners, issuerOwners.length, { from: acIssuerOwner });
-        let { logs } = await contract.addIssuer(issuerContract.address);
-        // let issuerContract = await Issuer.at(logs[0].args.issuerAddress);
-        let addr = (logs.find(e => e.event == "IssuerAdded")).args.issuerAddress;
-        (issuerContract.address).should.equal(addr);
-        issuerAddresses.push(issuerContract.address);
-
-        for (j = 0; j < i + numberOfIssuers; j++) {
-            let certificateDigest = web3.utils.keccak256(web3.utils.toHex(`certificate${i}-${j}`));
-            await issuerContract.createSignedLeafCredential(subject, certificateDigest, { from: issuerOwners[0] });
-            await time.increase(time.duration.seconds(1));
-        }
-        certsPerIssuer.push(await issuerContract.digestsBySubject(subject));
-    }
-    return { issuerAddresses, certsPerIssuer };
-}
-
-async function aggregateCredentialsAtIssuer(issuerContract, owner, subject) {
-    await issuerContract.aggregateCredentials(subject, { from: owner });
-    return await issuerContract.aggregateCredentials.call(subject, { from: owner });
-}
-
-async function aggregateAllCredentials(acIssuer, acIssuerOwner, subject) {
-    let aggregationsPerIssuer = [];
-    let issuerAddresses = await acIssuer.issuers();
-    for (i = 0; i < issuerAddresses.length; i++) {
-        let issuerContract = await Issuer.at(issuerAddresses[i]);
-        let issuerOwners = await issuerContract.owners();
-        aggregation = await aggregateCredentialsAtIssuer(issuerContract, issuerOwners[0], subject);
-        aggregationsPerIssuer.push(aggregation);
-    }
-    return aggregationsPerIssuer
-}
-
-function hash(certs) {
-    return web3.utils.keccak256(web3.eth.abi.encodeParameter('bytes32[]', certs));
-}
+const Issuer = artifacts.require('IssuerImpl');
+const AccountableIssuer = artifacts.require('AccountableIssuerImpl');
 
 contract('AccountableIssuer', accounts => {
     const [issuer1, issuer2, issuer3, subject, other] = accounts;
     let acIssuer, issuer, issuerAddress = null;
-    const digest = web3.utils.keccak256(web3.utils.toHex('root-certificates'));
-
+    const digest = hash(web3.utils.toHex('root-certificates'));
 
     describe('constructor', () => {
         it('should successfully deploy the contract', async () => {
@@ -94,130 +50,163 @@ contract('AccountableIssuer', accounts => {
                 'AccountableIssuer: issuer already added'
             );
         });
+
+        it('should not add a contract that isn\'t implements IssuerInterface', async () => {
+            await expectRevert(
+                acIssuer.addIssuer("0xE11BA2b4D45Eaed5996Cd0823791E0C93114882d", { from: issuer1 }),
+                'invalid opcode'
+            );
+        });
+
+        it('should not allow to add itself', async () => {
+            await expectRevert(
+                acIssuer.addIssuer(acIssuer.address, { from: issuer1 }),
+                'AccountableIssuer: cannot add itself'
+            );
+        });
+
+        it('should successfully add a contract that implements IssuerInterface', async () => {
+            let acIssuer2 = await AccountableIssuer.new([issuer1], 1);
+            await acIssuer.addIssuer(acIssuer2.address, { from: issuer1 });
+            (await acIssuer.isIssuer(acIssuer2.address)).should.equal(true);
+
+            await acIssuer.addIssuer(issuer.address, { from: issuer1 });
+            (await acIssuer.isIssuer(issuer.address)).should.equal(true);
+        });
+
+        it('should revert if given issuer address isn\'t a valid address', async () => {
+            await expectRevert(
+                acIssuer.addIssuer("0x0000NOT0A0ADDRESS000000", { from: issuer1 }),
+                'invalid address'
+            );
+        });
     });
 
     describe('issuing root credential', () => {
-        let issuerAddresses, aggregationsPerIssuer = [];
-        let expectedRoot = null;
+        let wAddresses = [];
 
         beforeEach(async () => {
             acIssuer = await AccountableIssuer.new([issuer1, issuer2], 2);
-            ({ issuerAddresses } = await generateLeafCredentials(acIssuer, 2, issuer1, [issuer3], subject));
+            let issuerObj = await createNotary("leaf", issuer1, [issuer3]);
+            await acIssuer.addIssuer(issuerObj.address, { from: issuer1 });
 
-            aggregationsPerIssuer = await aggregateAllCredentials(acIssuer, issuer1, subject);
-
-            aggregationsPerIssuer.push(digest);
-            expectedRoot = hash(aggregationsPerIssuer);
+            let witnesses = await generateLeafCredentials([issuerObj], [subject], 4);
+            wAddresses = witnesses.map(w => w.address);
         });
 
         it('should issue a root credential', async () => {
-            // FIXME: As reported in the bug: https://github.com/trufflesuite/truffle/issues/2868
-            // The following is the workaround for the hidden overloaded method:
-            await acIssuer.methods["registerCredential(address,bytes32,bytes32,address[])"](subject, digest, expectedRoot, issuerAddresses, { from: issuer1 });
+            [evidencesRoot, aggregationPerWitness] = await aggregateSubTree(acIssuer, subject);
+            await acIssuer.registerCredential(subject, digest, wAddresses, { from: issuer1 });
 
-            let rootCertificate = (await acIssuer.digestsBySubject(subject))[0];
-            (rootCertificate).should.equal(digest);
+            let c = await acIssuer.issuedCredentials(digest);
+            (c.evidencesRoot).should.equal(evidencesRoot);
+            expect(await acIssuer.getWitnesses(digest)).to.have.same.members(wAddresses);
         });
 
         it('should confirm a root credential', async () => {
-            await acIssuer.methods["registerCredential(address,bytes32,bytes32,address[])"](subject, digest, expectedRoot, issuerAddresses, { from: issuer1 });
-
-            let rootCertificate = (await acIssuer.digestsBySubject(subject))[0];
-            (rootCertificate).should.equal(digest);
+            [evidencesRoot, aggregationPerWitness] = await aggregateSubTree(acIssuer, subject);
+            await acIssuer.registerCredential(subject, digest, wAddresses, { from: issuer1 });
 
             (await acIssuer.certified(digest)).should.equal(false);
 
-            await acIssuer.registerCredential(subject, digest, { from: issuer2 });
+            // FIXME: As reported in the bug: https://github.com/trufflesuite/truffle/issues/2868
+            // The following is the workaround for the hidden overloaded method:
+            await acIssuer.methods["registerCredential(address,bytes32)"](subject, digest, { from: issuer2 });
+
             await acIssuer.confirmCredential(digest, { from: subject });
 
             (await acIssuer.certified(digest)).should.equal(true);
         });
 
-        it('should revert if the given root doesn\'t match', async () => {
-            const wrongRoot = web3.utils.keccak256(web3.utils.toHex('wrongRoot'));
+        it('should revert if some of the leaves isn\'t aggregated', async () => {
             await expectRevert(
-                acIssuer.methods["registerCredential(address,bytes32,bytes32,address[])"](subject, digest, wrongRoot, issuerAddresses, { from: issuer1 }),
-                'AccountableIssuer: given proof could not be generated with existing credentials'
+                acIssuer.registerCredential(subject, digest, wAddresses, { from: issuer1 }),
+                "AccountableIssuer: aggregation on sub-contract not found"
             );
         });
-    });
 
-    describe('verifying credential', () => {
-        let issuerAddresses, aggregationsPerIssuer = [];
-        const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000';
-
-        beforeEach(async () => {
-            acIssuer = await AccountableIssuer.new([issuer1], 1);
-            ({ issuerAddresses } = await generateLeafCredentials(acIssuer, 2, issuer1, [issuer2], subject));
-
-            aggregationsPerIssuer = await aggregateAllCredentials(acIssuer, issuer1, subject);
-        });
-
-        it('should successfully verify a valid set of credentials', async () => {
-            (await acIssuer.verifyCredential(subject, aggregationsPerIssuer, issuerAddresses)).should.equal(true);
-        });
-
-        it('should revert if there is no sufficient number of issuers', async () => {
+        it('should revert if there is no sufficient number of sub-issuers', async () => {
             await expectRevert(
-                acIssuer.verifyCredential(subject, aggregationsPerIssuer, []),
+                acIssuer.registerCredential(subject, digest, []),
                 'AccountableIssuer: require at least one issuer'
             );
         });
 
-        it('should revert if given issuer isn\'t a valid address', async () => {
+        it('should revert for unauthorized issuer', async () => {
+            let unauthorized = await Issuer.new([issuer1], 1);
             await expectRevert(
-                acIssuer.verifyCredential(subject, aggregationsPerIssuer, ["0x0000NOT0A0ADDRESS000000"]),
-                'invalid address'
+                acIssuer.registerCredential(subject, digest, [unauthorized.address], { from: issuer1 }),
+                "AccountableIssuer: issuer's address doesn't found"
+            );
+        });
+    });
+
+    describe('aggregating root credential', () => {
+        let wAddresses = [];
+
+        beforeEach(async () => {
+            acIssuer = await AccountableIssuer.new([issuer1], 1);
+            let issuerObj = await createNotary("leaf", issuer1, [issuer2]);
+            await acIssuer.addIssuer(issuerObj.address, { from: issuer1 });
+
+            let witnesses = await generateLeafCredentials([issuerObj], [subject], 4);
+            wAddresses = witnesses.map(w => w.address);
+
+            [evidencesRoot, aggregationPerWitness] = await aggregateSubTree(acIssuer, subject);
+
+            await acIssuer.registerCredential(subject, digest, wAddresses, { from: issuer1 });
+
+            await acIssuer.confirmCredential(digest, { from: subject });
+        });
+
+        it('should aggregate credentials on root contract', async () => {
+            await acIssuer.aggregateCredentials(subject, { from: issuer1 });
+            let rootProof = await acIssuer.getProof(subject);
+            (rootProof).should.equal(hashByteArray([digest]));
+        });
+    });
+
+    describe('verifying root credential', () => {
+        let wAddresses = [];
+        let rootProof = null;
+        const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+        beforeEach(async () => {
+            acIssuer = await AccountableIssuer.new([issuer1], 1);
+
+            let leaves = await createLeaves(acIssuer, issuer1, [issuer2, issuer3]);
+
+            // Generate credentials on leaves
+            let witnesses = await generateLeafCredentials(leaves, [subject], 4);
+            wAddresses = witnesses.map(w => w.address);
+
+            // Aggregate on leaves
+            await aggregateSubTree(acIssuer, subject);
+
+            // generate root credential
+            await acIssuer.registerCredential(subject, digest, wAddresses, { from: issuer1 });
+            await acIssuer.confirmCredential(digest, { from: subject });
+        });
+
+        it('should successfully verify a valid set of credentials', async () => {
+            // Aggregate on root
+            await acIssuer.aggregateCredentials(subject, { from: issuer1 });
+            rootProof = await acIssuer.getProof(subject);
+
+            (await acIssuer.verifyCredentialTree(subject, rootProof)).should.equal(true);
+        });
+
+        it('should revert if given root is zero', async () => {
+            await expectRevert(
+                acIssuer.verifyCredentialTree(subject, ZERO_BYTES32),
+                'AccountableIssuer: root proof should not be zero'
             );
         });
 
-        it('should revert if given issuer isn\'t authorized', async () => {
-            let issuer = await Issuer.new([other], 1);
+        it('should revert if root proof doesn\'t match', async () => {
             await expectRevert(
-                acIssuer.verifyCredential(subject, aggregationsPerIssuer, [issuer.address]),
-                'AccountableIssuer: address not registered'
-            );
-        });
-
-        it('should revert if given contract isn\'t an issuer instance', async () => {
-            let something = await Owners.new([other], 1);
-            await acIssuer.addIssuer(something.address); // force addition of wrong contract
-            await expectRevert.unspecified(
-                acIssuer.verifyCredential(subject, aggregationsPerIssuer, [something.address])
-            );
-        });
-
-        it('should revert if the proof doesn\'t exists', async () => {
-            i = aggregationsPerIssuer.length - 1;
-            wrongDigests = aggregationsPerIssuer.slice(0, i)
-            wrongDigests.push(ZERO_BYTES32);
-
-            let issuer = await Issuer.at(issuerAddresses[i]);
-            await issuer.deleteProof(subject);
-
-            await expectRevert(
-                acIssuer.verifyCredential(subject, wrongDigests, issuerAddresses),
-                'CredentialSum: proof not exists'
-            );
-        });
-
-        it('should revert if there is no proof on sub-contracts', async () => {
-            let issuer = await Issuer.new([other], 1);
-            await acIssuer.addIssuer(issuer.address);
-            await expectRevert(
-                acIssuer.verifyCredential(subject, aggregationsPerIssuer, [issuer.address]),
-                'Issuer: proof doesn\'t match or not exists');
-        });
-
-        it('should revert if proofs don\'t match', async () => {
-            let fakeCerts = []
-            for (let i = 0; i < 3; i++) {
-                fakeCerts[i] = web3.utils.keccak256(web3.utils.toHex(`someValue-${i}`));
-            }
-
-            await expectRevert(
-                acIssuer.verifyCredential(subject, fakeCerts, issuerAddresses),
-                'Issuer: proof doesn\'t match or not exists'
+                acIssuer.verifyCredentialTree(subject, hash("something")),
+                "Issuer: proof doesn't match or not exists"
             );
         });
     });

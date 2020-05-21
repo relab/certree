@@ -1,5 +1,5 @@
 var CredentialSum = artifacts.require("CredentialSum");
-var Issuer = artifacts.require("IssuerMock");
+var Issuer = artifacts.require("IssuerImpl");
 
 module.exports = async function (deployer, network, accounts) {
     const [issuer1, issuer2] = accounts;

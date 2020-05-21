@@ -1,15 +1,16 @@
 const { BN, expectEvent, expectRevert, time, constants } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
+const { hash, hashByteArray } = require('./helpers/test-helpers');
 
-const Issuer = artifacts.require('IssuerMock');
+const Issuer = artifacts.require('IssuerImpl');
 
 contract('Issuer', accounts => {
     const [issuer1, issuer2, issuer3, subject1, subject2] = accounts;
     let issuer = null;
-    const reason = web3.utils.keccak256(web3.utils.toHex('revoked'));
-    const digest1 = web3.utils.keccak256(web3.utils.toHex('cert1'));
-    const digest2 = web3.utils.keccak256(web3.utils.toHex('cert2'));
-    const digest3 = web3.utils.keccak256(web3.utils.toHex('cert3'));
+    const reason = hash(web3.utils.toHex('revoked'));
+    const digest1 = hash(web3.utils.toHex('cert1'));
+    const digest2 = hash(web3.utils.toHex('cert2'));
+    const digest3 = hash(web3.utils.toHex('cert3'));
 
     describe('constructor', () => {
         it('should successfully deploy the contract initializing the owners', async () => {
@@ -313,7 +314,7 @@ contract('Issuer', accounts => {
         });
 
         describe('list of credentials', () => {
-            const expected = web3.utils.keccak256(web3.eth.abi.encodeParameter('bytes32[]', digests));
+            const expected = hashByteArray(digests);
 
             beforeEach(async () => {
                 for (d of digests) {
@@ -368,7 +369,7 @@ contract('Issuer', accounts => {
             await issuer.confirmCredential(digest1, { from: subject1 });
 
             const aggregated = await issuer.aggregateCredentials.call(subject1);
-            let expected = web3.utils.keccak256(web3.eth.abi.encodeParameter('bytes32[]', [digest1]));
+            let expected = hashByteArray([digest1]);
 
             (aggregated).should.equal(expected);
         });
@@ -383,7 +384,7 @@ contract('Issuer', accounts => {
 
     describe('verify', () => {
         const digests = [digest1, digest2, digest3];
-        const expected = web3.utils.keccak256(web3.eth.abi.encodeParameter('bytes32[]', digests));
+        const expected = hashByteArray(digests);
 
         beforeEach(async () => {
             issuer = await Issuer.new([issuer1], 1);
