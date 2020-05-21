@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.5.13 <0.7.0;
+pragma solidity >=0.6.0 <0.7.0;
 
 // Based on official specification in https://eips.ethereum.org/EIPS/eip-165
 interface ERC165 {

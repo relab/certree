@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.5.13 <0.7.0;
+pragma solidity >=0.6.0 <0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./ERC165.sol";
@@ -16,7 +16,6 @@ import "./CredentialSum.sol";
  * issued by untrusted issuers, discouraging fraudulent processes by
  * establishing a casual order between the certificates.
  */
- // TODO: Ensure interface implementation: https://eips.ethereum.org/EIPS/eip-165
  // TODO: Allow upgradeable contract using similar approach of https://github.com/PeterBorah/ether-router
 abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     // using SafeMath for uint256;

@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.5.13 <0.7.0;
-// pragma experimental ABIEncoderV2;
+pragma solidity >=0.6.0 <0.7.0;
 
 import "./ERC165.sol";
+import "./ERC165Checker.sol";
 import "./IssuerInterface.sol";
 import "./Issuer.sol";
 import "./CredentialSum.sol";
-// import "@openzeppelin/contracts/math/SafeMath.sol";
-// import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 
 /**
  * @title AccountableIssuer's contract
  * This contract act as a factory contract for issuers and
  * consider implicit signatures verification already necessary
  * to perform valid transactions.
- * TODO Implement using EIP712:
+ *
+ * TODO: - Implement using EIP712:
  * https://github.com/ethereum/EIPs/blob/master/EIPS/eip-712.md
+ *       - Convert Issuer and AccountableIssuer to libraries
  */
 abstract contract AccountableIssuer is Issuer {
     address[] private _issuers;
@@ -28,8 +28,6 @@ abstract contract AccountableIssuer is Issuer {
         address indexed issuerAddress,
         address indexed addedBy
     );
-
-    //TODO: blacklist issuers?
 
     constructor(address[] memory owners, uint256 quorum)
         public
@@ -65,32 +63,21 @@ abstract contract AccountableIssuer is Issuer {
      * be added and further checks of the contract code should be
      * performed before approval of the inclusion.
      */
-    // TODO: - require a quorum of owners
-    //       - not allow add issuer where the sender is an owner
+    // FIXME: - require a quorum of owners
+    //        - not allow add issuer where the sender is an owner
+    //        - this function allows cycles, and there is no easy
+    // way to detect it other than going through all children of `issuerAddress` and checking if any reference this.
+    // Consider remove this function and move to concrete Issuer
+    // implementations/library, making the AccountableIssuer
+    // create them instead of add any implementer.
     function addIssuer(address issuerAddress) onlyOwner public {
+        require(address(this) != issuerAddress, "AccountableIssuer: cannot add itself");
         require(!isIssuer[issuerAddress], "AccountableIssuer: issuer already added");
-        (bool success, bool result) = _callSupportsIssuerInterface(issuerAddress);
-        assert(success && result);
+        bool success = ERC165Checker.supportsInterface(issuerAddress, type(IssuerInterface).interfaceId);
+        assert(success);
         isIssuer[issuerAddress] =  true;
         _issuers.push(issuerAddress);
         emit IssuerAdded(issuerAddress, msg.sender);
-    }
-
-    /**
-     * @dev _callSupportsIssuerInterface determines whether the
-     * contract at account supports IssuerInterface as specified in ERC-165.
-     * @param account The address of the contract to query
-     * @return success true if the staticcall succeeded, false otherwise
-     * @return result true if `success` and the contract at account
-     * indicates support of the IssuerInterface, false otherwise
-     */
-    function _callSupportsIssuerInterface(address account) internal view returns (bool, bool)
-    {
-        bytes memory encodedParams = abi.encodeWithSelector(type(ERC165).interfaceId, type(IssuerInterface).interfaceId);
-        (bool success, bytes memory result) = account.staticcall{ gas: 30000 }(encodedParams);
-        // staticcall outputs are 32 bytes long
-        if (result.length < 32) return (false, false);
-        return (success, abi.decode(result, (bool)));
     }
 
     /**
