@@ -2,6 +2,28 @@
 // Using Should style globally
 require('chai/register-should');
 
+const fs = require('fs');
+const HDWalletProvider = require("@truffle/hdwallet-provider");
+
+const envFile = ".env";
+let mnemonic = null;
+let infura_project_id = null;
+let data = fs.readFileSync(envFile, 'utf8');
+
+function parseEnv(param) {
+    var regex = new RegExp(param + "=", "i");
+    let match = data.split('\n').find(line => regex.test(line));
+    if (match) {
+        return match.split("=")[1];
+    }
+    throw new Error("ERROR: Environment variable " + param + " not found on file .env and ROPSTEN_TESTNET is set to " + process.env.ROPSTEN_TESTNET);
+};
+
+if (process.env.ROPSTEN_TESTNET) {
+    mnemonic = parseEnv("MNEMONIC");
+    infura_project_id = parseEnv("INFURA_PROJECT_ID");
+}
+
 module.exports = {
     networks: {
         development: { // local test net
@@ -20,6 +42,12 @@ module.exports = {
             network_id: "*", // eslint-disable-line camelcase
             accounts: 5,
             defaultEtherBalance: 50
+        },
+        ropsten: { // ropsten testnet
+            provider: function () {
+                return new HDWalletProvider(mnemonic, `https://ropsten.infura.io/v3/${infura_project_id}`, 0, 10, true, "m/44'/60'/0'/0/");
+            },
+            network_id: "3", // eslint-disable-line camelcase
         },
     },
 
