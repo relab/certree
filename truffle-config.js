@@ -8,6 +8,7 @@ const HDWalletProvider = require("@truffle/hdwallet-provider");
 const envFile = ".env";
 let mnemonic = null;
 let infura_project_id = null;
+let coinmarketcap_apikey = "";
 let data = fs.readFileSync(envFile, 'utf8');
 
 function parseEnv(param) {
@@ -22,6 +23,10 @@ function parseEnv(param) {
 if (process.env.ROPSTEN_TESTNET) {
     mnemonic = parseEnv("MNEMONIC");
     infura_project_id = parseEnv("INFURA_PROJECT_ID");
+}
+
+if (process.env.GAS_REPORT) {
+    coinmarketcap_apikey = parseEnv("COINMARKETCAP_APIKEY");
 }
 
 module.exports = {
@@ -59,7 +64,11 @@ module.exports = {
             currency: 'USD', // NOK, EUR
             src: "contracts",
             showMethodSig: true,
-            outputFile: "gas-report.txt"
+            outputFile: "gas-report.txt",
+            onlyCalledMethods: true,
+            showTimeSpent: true,
+            excludeContracts: ['Migrations'],
+            coinmarketcap: coinmarketcap_apikey
         }
     },
 
