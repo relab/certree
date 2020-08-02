@@ -45,6 +45,7 @@ library CredentialSum {
             digests.length > 0,
             "CredentialSum: there is no digests"
         );
+        // FIXME: consider use sha256(abi.encode(digests));
         return keccak256(abi.encode(digests));
     }
 

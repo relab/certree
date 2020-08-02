@@ -5,7 +5,7 @@ const { hash, hashByteArray } = require('./helpers/test-helpers');
 const Issuer = artifacts.require('IssuerImpl');
 
 contract('Issuer', accounts => {
-    const [issuer1, issuer2, issuer3, subject1, subject2] = accounts;
+    const [issuer1, issuer2, issuer3, subject1, subject2, verifier] = accounts;
     let issuer = null;
     const reason = hash(web3.utils.toHex('revoked'));
     const digest1 = hash(web3.utils.toHex('cert1'));

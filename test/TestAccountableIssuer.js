@@ -1,4 +1,4 @@
-const { BN, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
+const { time, BN, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 const { createNotary, createLeaves, generateLeafCredentials, aggregateSubTree, hash, hashByteArray } = require('./helpers/test-helpers');
 
@@ -6,7 +6,7 @@ const Issuer = artifacts.require('IssuerImpl');
 const AccountableIssuer = artifacts.require('AccountableIssuerImpl');
 
 contract('AccountableIssuer', accounts => {
-    const [issuer1, issuer2, issuer3, subject, other] = accounts;
+    const [issuer1, issuer2, issuer3, subject, verifier, other] = accounts;
     let acIssuer, issuer, issuerAddress = null;
     const digest = hash(web3.utils.toHex('root-certificates'));
 
@@ -174,7 +174,7 @@ contract('AccountableIssuer', accounts => {
         beforeEach(async () => {
             acIssuer = await AccountableIssuer.new([issuer1], 1);
 
-            let leaves = await createLeaves(acIssuer, issuer1, [issuer2, issuer3]);
+            let leaves = await createLeaves(acIssuer, issuer1, [[issuer2], [issuer3]]);
 
             // Generate credentials on leaves
             let witnesses = await generateLeafCredentials(leaves, [subject], 4);
@@ -208,6 +208,40 @@ contract('AccountableIssuer', accounts => {
                 acIssuer.verifyCredentialTree(subject, hash("something")),
                 "Issuer: proof doesn't match or not exists"
             );
+        });
+    });
+
+    describe('revoke', () => {
+        const reason = hash(web3.utils.toHex('revoked'));
+        let wAddresses = [];
+        let rootProof = null;
+        const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+        beforeEach(async () => {
+            acIssuer = await AccountableIssuer.new([issuer1], 1);
+
+            let leaves = await createLeaves(acIssuer, issuer1, [[issuer2], [issuer3]]);
+
+            // Generate credentials on leaves
+            let witnesses = await generateLeafCredentials(leaves, [subject], 4);
+            wAddresses = witnesses.map(w => w.address);
+
+            // Aggregate on leaves
+            await aggregateSubTree(acIssuer, subject);
+
+            // generate root credential
+            await acIssuer.registerCredential(subject, digest, wAddresses, { from: issuer1 });
+            await acIssuer.confirmCredential(digest, { from: subject });
+        });
+
+        it('should successfully create a root revocation proof', async () => {
+            await acIssuer.revokeCredential(digest, reason, { from: issuer1 });
+
+            const revocation = await acIssuer.revokedCredentials(digest);
+            expect(await time.latestBlock()).to.be.bignumber.equal(new BN(revocation.revokedBlock));
+            assert.equal(revocation.reason, reason);
+            assert.equal(revocation.subject, subject);
+            assert.equal(revocation.issuer, issuer1);
         });
     });
 });

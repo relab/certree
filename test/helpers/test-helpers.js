@@ -1,4 +1,5 @@
-const { time } = require('@openzeppelin/test-helpers');
+const { BN, time } = require('@openzeppelin/test-helpers');
+const { toWei, fromWei } = require('web3-utils');
 
 const Issuer = artifacts.require('IssuerImpl');
 const AccountableIssuer = artifacts.require('AccountableIssuerImpl');
@@ -26,10 +27,10 @@ async function createNotary(type, creator, owners) {
 
 // create a list of leaves based on the number of owners
 // i.e. one leaf per owner
-async function createLeaves(acIssuer, acOwner, leavesOwners) {
+async function createLeaves(acIssuer, acOwner, leavesOwnersArray) {
     let leaves = [];
-    for (owner of leavesOwners) {
-        let issuerObj = await createNotary("leaf", acOwner, [owner]);
+    for (owners of leavesOwnersArray) {
+        let issuerObj = await createNotary("leaf", acOwner, owners);
         await acIssuer.addIssuer(issuerObj.address, { from: acOwner });
         leaves.push(issuerObj);
     }
@@ -176,6 +177,18 @@ function hashByteArray(byteArray) {
     return hash(web3.eth.abi.encodeParameter('bytes32[]', byteArray));
 }
 
+function etherToWei(amount) {
+    return new BN(toWei(amount, 'ether'));
+}
+
+function weiToEther(amount) {
+    return fromWei(amount, 'ether');
+}
+
+async function balance(address) {
+    return new BN(await web3.eth.getBalance(address));
+}
+
 module.exports = {
     createNotary: createNotary,
     addNode: addNode,
@@ -188,5 +201,8 @@ module.exports = {
     aggregationsOf: aggregationsOf,
     createLeaves: createLeaves,
     hash: hash,
-    hashByteArray: hashByteArray
+    hashByteArray: hashByteArray,
+    etherToWei: etherToWei,
+    weiToEther: weiToEther,
+    balance: balance
 };
