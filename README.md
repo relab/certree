@@ -1,4 +1,4 @@
-# BBChain Contracts
+# Credential Transparency
 
 Install and start a test chain.
 ```

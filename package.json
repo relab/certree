@@ -1,7 +1,7 @@
 {
-  "name": "bbchain-contracts",
-  "version": "0.0.1",
-  "description": "Ethereum Contracts for BBChain project",
+  "name": "ct-eth",
+  "version": "0.1.0",
+  "description": "Ethereum Credential Transparency",
   "directories": {
     "test": "test"
   },
