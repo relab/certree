@@ -77,7 +77,7 @@ abstract contract AccountableIssuer is Issuer {
     // Consider remove this function and move to concrete Issuer
     // implementations/library, making the AccountableIssuer
     // create them instead of add any implementer.
-    function addIssuer(address issuerAddress) onlyOwner public {
+    function addIssuer(address issuerAddress) public onlyOwner {
         require(address(this) != issuerAddress, "AccountableIssuer: cannot add itself");
         require(!isIssuer[issuerAddress], "AccountableIssuer: issuer already added");
         bool success = ERC165Checker.supportsInterface(issuerAddress, type(IssuerInterface).interfaceId);
