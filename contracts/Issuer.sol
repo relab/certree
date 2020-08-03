@@ -20,6 +20,7 @@ import "./CredentialSum.sol";
 abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     // using SafeMath for uint256;
     bool private _isLeaf = true;
+    address private _parent;
 
     // Result of an aggregation of all digests of one subject
     using CredentialSum for CredentialSum.Proof;
@@ -77,6 +78,7 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
         Owners(owners, quorum)
     {
         _isLeaf = isLeaf;
+        _parent = msg.sender; // if parent is a contract, then this instance is a leaf or internal node, otherwise parent is a external account address and this instance is the highest root contract.
     }
 
     modifier notRevoked(bytes32 digest) {
@@ -96,6 +98,13 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
      */
     function isLeaf() override public view returns(bool) {
         return _isLeaf;
+    }
+
+    /**
+     * @return the address of the parent of this node
+     */
+    function myParent() public view returns(address) {
+        return _parent; // TODO: should we allow migration?
     }
 
     /**
@@ -132,6 +141,8 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
         return revokedCredentials[digest].revokedBlock != 0;
     }
 
+    // TODO: check if subject isn't a contract address?
+    // Use `extcodesize` can be tricky since it will also return 0 for the constructor method of a contract, but it seems that isn't a problem in this context, since it isn't being used to prevent any action.
     function _issue(address subject, bytes32 digest, bytes32 eRoot,
         address[] memory witnesses)
         internal
@@ -237,7 +248,6 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     function revokeCredential(bytes32 digest, bytes32 reason)
         public
         override
-        onlyOwner
         notRevoked(digest)
     {
         require(
@@ -245,6 +255,7 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
             "Issuer: no credential proof found"
         );
         address subject = issuedCredentials[digest].subject;
+        require(isOwner[msg.sender] || subject == msg.sender, "Issuer: sender must be an owner or the subject of the credential");
         assert(_digestsBySubject[subject].length > 0);
         revokedCredentials[digest] = RevocationProof(
             msg.sender,
@@ -252,7 +263,8 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
             block.number,
             reason
         );
-        delete issuedCredentials[digest];
+        // TODO: analyse the consequence of deleting the proof.
+        // delete issuedCredentials[digest];
         emit CredentialRevoked(
             digest,
             subject,
@@ -294,7 +306,8 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
         onlyOwner
         returns (bytes32)
     {
-        // TODO: ignore the revoke credentials in the aggregation
+        // TODO: Alternativaly, consider to hash the credential proofs instead of only the digests, i.e.: sha256(abi.encode(issuedCredentials[digests[i]]));
+        // FIXME: the number of digests should be bounded to avoid gas limit on loops
         bytes32[] memory digests = _digestsBySubject[subject];
         require(
             checkCredentials(digests),
@@ -315,6 +328,10 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     {
         bytes32 proof = aggregatedProof.proofs(subject);
         require(proof == croot, "Issuer: proof doesn't match or not exists");
+        require(
+            _digestsBySubject[subject].length > 0,
+            "Issuer: there is no credential for the given subject"
+        );
         return aggregatedProof.verifySelfProof(
             subject,
             _digestsBySubject[subject]

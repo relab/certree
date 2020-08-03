@@ -254,7 +254,7 @@ contract('Issuer', accounts => {
             await issuer.registerCredential(subject1, digest1, { from: issuer1 });
             await expectRevert(
                 issuer.revokeCredential(digest1, reason, { from: issuer3 }),
-                'Owners: sender is not an owner'
+                'Issuer: sender must be an owner or the subject of the credential'
             );
         });
 
@@ -296,6 +296,14 @@ contract('Issuer', accounts => {
                 revokedBlock: blockNumber,
                 reason: reason
             });
+
+            (await issuer.certified(digest1)).should.equal(false);
+        });
+
+        // TODO: analyse the consequence of deleting the proof
+        it.skip('should deletes the revoked credential', async () => {
+            await issuer.registerCredential(subject1, digest1, { from: issuer1 });
+            await issuer.revokeCredential(digest1, reason, { from: issuer2 });
 
             const credential = await issuer.issuedCredentials(digest1);
             assert.equal(credential.subject, constants.ZERO_ADDRESS);

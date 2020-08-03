@@ -17,11 +17,18 @@ import "./CredentialSum.sol";
  * https://github.com/ethereum/EIPs/blob/master/EIPS/eip-712.md
  *       - Convert Issuer and AccountableIssuer to libraries
  */
+
+// FIXME: Contract creation initialization returns data with length of more than 24576 bytes. The deployment will likely fails.
+// Move issuer functions to library.
+// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-170.md
 abstract contract AccountableIssuer is Issuer {
     address[] private _issuers;
 
     // Map of all issuers sub-contracts
     mapping(address => bool) public isIssuer;
+
+    // TODO: replace the above fields by a _issuers map
+    // mapping(address => IssuerInterface) public _issuers;
 
     // Logged when an issuer added.
     event IssuerAdded(
@@ -88,7 +95,7 @@ abstract contract AccountableIssuer is Issuer {
     function registerCredential(
         address subject,
         bytes32 digest,
-        address[] memory witnesses
+        address[] memory witnesses // FIXME: the number of witnesses should be bounded to avoid gas limit on loops
     ) public onlyOwner {
         require(witnesses.length > 0, "AccountableIssuer: require at least one issuer");
         bytes32[] memory roots = new bytes32[](witnesses.length);
@@ -98,10 +105,13 @@ abstract contract AccountableIssuer is Issuer {
             bool success = ERC165Checker.supportsInterface(issuerAddress, type(IssuerInterface).interfaceId);
             assert(success);
             Issuer issuer = Issuer(issuerAddress);
-            bytes32 root = issuer.getProof(subject);
+            bytes32 root = issuer.getProof(subject); //TODO: check for re-entrancy
+            // TODO: check the time of the creation of the roots on the witnesses? And only allow roots that have a order between them.
+            // Root should carry timestamp info
             require(root != bytes32(0), "AccountableIssuer: aggregation on sub-contract not found");
             roots[i] = root;
         }
+        // FIXME: Not allow reuse of witness at same contract? keep a map of witnesses
         // FIXME: consider use sha256(abi.encodePacked(roots, digests));
         bytes32 evidencesRoot = CredentialSum.makeRoot(roots);
         _issue(subject, digest, evidencesRoot, witnesses);
