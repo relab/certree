@@ -68,10 +68,10 @@ contract('AccountableIssuer', accounts => {
         it('should successfully add a contract that implements IssuerInterface', async () => {
             let acIssuer2 = await AccountableIssuer.new([issuer1], 1);
             await acIssuer.addIssuer(acIssuer2.address, { from: issuer1 });
-            (await acIssuer.isIssuer(acIssuer2.address)).should.equal(true);
+            (await acIssuer.authorizedIssuer(acIssuer2.address)).should.equal(true);
 
             await acIssuer.addIssuer(issuer.address, { from: issuer1 });
-            (await acIssuer.isIssuer(issuer.address)).should.equal(true);
+            (await acIssuer.authorizedIssuer(issuer.address)).should.equal(true);
         });
 
         it('should revert if given issuer address isn\'t a valid address', async () => {

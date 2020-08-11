@@ -23,36 +23,11 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     address private _parent;
 
     // Result of an aggregation of all digests of one subject
-    using CredentialSum for CredentialSum.Proof;
-    CredentialSum.Proof aggregatedProof;
+    using CredentialSum for CredentialSum.Root;
+    // CredentialSum.Root root;
+    // Root per subject
+    mapping(address => CredentialSum.Root) public root;
 
-    /**
-     * @dev CredentialProof represents an on-chain proof that a
-     * verifiable credential was created and signed by an issuer.
-     */
-    struct CredentialProof {
-        uint256 signed; // Amount of owners who signed
-        bool approved; // Whether the subject approved the credential
-        uint256 insertedBlock; // The block number of the proof creation
-        uint256 blockTimestamp; // The block timestamp of the proof creation
-        uint256 nonce; // Increment-only counter of credentials of the same subject
-        address issuer; // The issuer address of this proof
-        address subject; // The entity address refered by a proof
-        bytes32 digest; // The digest of the credential stored (e.g. Swarm/IPFS hash)
-        bytes32 evidencesRoot; // if is a leaf aggregatedProof is zero otherwise is the result of the aggregation of the digests at the witnesses
-        address[] witnesses; // if witnesses is empty is a leaf notary, otherwise is a list of node notaries
-    }
-
-    /**
-     * @dev RevocationProof represents an on-chain proof that a
-     * verifiable credential was revoked by an issuer.
-     */
-    struct RevocationProof {
-        address issuer;
-        address subject;
-        uint256 revokedBlock; // The block number of the revocation (0 if not revoked)
-        bytes32 reason; // digest of the reason of the revocation
-    }
     // TODO: add key revocation
 
     // Incremental-only counter for issued credentials per subject
@@ -121,9 +96,10 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
 
     /**
      * @return the aggregated proof of a subject
+     * i.e. root of the credential tree in this contract instance
      */
-    function getProof(address subject) public view override returns (bytes32) {
-        return aggregatedProof.proofs(subject);
+    function getRootProof(address subject) public view override returns (bytes32) {
+        return root[subject].proof;
     }
 
     /**
@@ -143,6 +119,7 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
 
     // TODO: check if subject isn't a contract address?
     // Use `extcodesize` can be tricky since it will also return 0 for the constructor method of a contract, but it seems that isn't a problem in this context, since it isn't being used to prevent any action.
+    // TODO: improve the quorum check
     function _issue(address subject, bytes32 digest, bytes32 eRoot,
         address[] memory witnesses)
         internal
@@ -206,7 +183,7 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
         override
         onlyOwner
     {
-        // TODO: verify the cost of the following approaches
+        // TODO: verify the cost of using the following variables instead
         // bytes32 zero;
         // address[] memory none;
         _issue(subject, digest, bytes32(0), new address[](0));
@@ -255,8 +232,9 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
             "Issuer: no credential proof found"
         );
         address subject = issuedCredentials[digest].subject;
+        assert(subject != address(0));
         require(isOwner[msg.sender] || subject == msg.sender, "Issuer: sender must be an owner or the subject of the credential");
-        assert(_digestsBySubject[subject].length > 0);
+        // assert(_digestsBySubject[subject].length > 0);
         revokedCredentials[digest] = RevocationProof(
             msg.sender,
             subject,
@@ -275,28 +253,6 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     }
 
     /**
-     * @dev verifies if a list of digests are certified
-     */
-    function checkCredentials(bytes32[] memory digests)
-        public
-        view
-        override
-        returns (bool)
-    {
-        require(
-            digests.length > 0,
-            "Issuer: there is no credential for the given subject"
-        );
-        for (uint256 i = 0; i < digests.length; i++) {
-            if (!certified(digests[i])) {
-                return false;
-            } //&& !isRevoked(digests[i]));
-            // all subject's certificates must be signed by all parties and should be valid
-        }
-        return true;
-    }
-
-    /**
      * @dev aggregateCredentials aggregates the digests of a given subject on the credential level
      */
     function aggregateCredentials(address subject)
@@ -308,33 +264,65 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     {
         // TODO: Alternativaly, consider to hash the credential proofs instead of only the digests, i.e.: sha256(abi.encode(issuedCredentials[digests[i]]));
         // FIXME: the number of digests should be bounded to avoid gas limit on loops
-        bytes32[] memory digests = _digestsBySubject[subject];
         require(
-            checkCredentials(digests),
+            verifyAllCredentials(subject),
             "Issuer: there are unsigned credentials"
         );
-        return aggregatedProof.generateProof(subject, digests);
+        return root[subject].generateRoot(subject, _digestsBySubject[subject]);
     }
 
-    /**
-     * @dev verifyCredentialLeaf verifies if the credential of a given subject
-     * was correctly generated based on the root contract
-     */
-    function verifyCredentialLeaf(address subject, bytes32 croot)
+    // verify root aggregation
+    function verifyCredentialRoot(address subject, bytes32 croot)
         public
         view
         override
         returns (bool)
     {
-        bytes32 proof = aggregatedProof.proofs(subject);
-        require(proof == croot, "Issuer: proof doesn't match or not exists");
+        require(root[subject].hasRoot(), "Issuer: root not found");
         require(
             _digestsBySubject[subject].length > 0,
             "Issuer: there is no credential for the given subject"
         );
-        return aggregatedProof.verifySelfProof(
-            subject,
-            _digestsBySubject[subject]
+        assert(root[subject].verifySelfRoot(_digestsBySubject[subject]));
+        bytes32 proof = root[subject].proof;
+        return proof == croot;
+    }
+
+    /**
+     * @dev verifyAllCredentials
+     */
+    function verifyAllCredentials(address subject)
+        public
+        view
+        override
+        returns (bool)
+    {
+        require(
+            _digestsBySubject[subject].length > 0,
+            "Issuer: there is no credential for the given subject"
         );
+        for (uint256 i = 0; i < _digestsBySubject[subject].length; i++) {
+            if (!verifyCredential(subject, _digestsBySubject[subject][i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function verifyCredential(address subject, bytes32 digest)
+        public
+        view
+        override
+        returns (bool)
+    {
+        require(
+            issuedCredentials[digest].insertedBlock != 0,
+            "Issuer: no credential proof found"
+        );
+        require(
+            issuedCredentials[digest].subject == subject,
+            "Issuer: credential must be owned by the given subject"
+        );
+        return (certified(digest) && isRevoked(digest));
     }
 }

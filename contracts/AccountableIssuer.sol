@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.0 <0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "./ERC165.sol";
 import "./ERC165Checker.sol";
@@ -22,10 +23,12 @@ import "./CredentialSum.sol";
 // Move issuer functions to library.
 // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-170.md
 abstract contract AccountableIssuer is Issuer {
+    using CredentialSum for CredentialSum.Root;
+
     address[] private _issuers;
 
     // Map of all issuers sub-contracts
-    mapping(address => bool) public isIssuer;
+    mapping(address => bool) public authorizedIssuers;
 
     // TODO: replace the above fields by a _issuers map
     // mapping(address => IssuerInterface) public _issuers;
@@ -77,12 +80,13 @@ abstract contract AccountableIssuer is Issuer {
     // Consider remove this function and move to concrete Issuer
     // implementations/library, making the AccountableIssuer
     // create them instead of add any implementer.
+    // TODO: factory methods to create accountableIssuers and Issuers
     function addIssuer(address issuerAddress) public onlyOwner {
         require(address(this) != issuerAddress, "AccountableIssuer: cannot add itself");
-        require(!isIssuer[issuerAddress], "AccountableIssuer: issuer already added");
+        require(!authorizedIssuers[issuerAddress], "AccountableIssuer: issuer already added");
         bool success = ERC165Checker.supportsInterface(issuerAddress, type(IssuerInterface).interfaceId);
         assert(success);
-        isIssuer[issuerAddress] =  true;
+        authorizedIssuers[issuerAddress] =  true;
         _issuers.push(issuerAddress);
         emit IssuerAdded(issuerAddress, msg.sender);
     }
@@ -92,28 +96,30 @@ abstract contract AccountableIssuer is Issuer {
      * new credential proof iff the aggregation of those credentials on
      * the sub-contracts match the given root (i.e. off-chain aggregation == on-chain aggregation)
      */
+    // TODO: onlyQuorum
     function registerCredential(
         address subject,
         bytes32 digest,
         address[] memory witnesses // FIXME: the number of witnesses should be bounded to avoid gas limit on loops
     ) public onlyOwner {
         require(witnesses.length > 0, "AccountableIssuer: require at least one issuer");
-        bytes32[] memory roots = new bytes32[](witnesses.length);
+        bytes32[] memory witenessProofs = new bytes32[](witnesses.length);
         for (uint256 i = 0; i < witnesses.length; i++) {
             address issuerAddress = address(witnesses[i]);
-            require(isIssuer[issuerAddress], "AccountableIssuer: issuer's address doesn't found");
+            require(authorizedIssuers[issuerAddress], "AccountableIssuer: issuer's address doesn't found");
             bool success = ERC165Checker.supportsInterface(issuerAddress, type(IssuerInterface).interfaceId);
             assert(success);
             Issuer issuer = Issuer(issuerAddress);
-            bytes32 root = issuer.getProof(subject); //TODO: check for re-entrancy
+            bytes32 proof = issuer.getRootProof(subject); //TODO: check for re-entrancy
             // TODO: check the time of the creation of the roots on the witnesses? And only allow roots that have a order between them.
+            // i.e. root[subject].insertedBlock and root[subject].blockTimestamp
             // Root should carry timestamp info
-            require(root != bytes32(0), "AccountableIssuer: aggregation on sub-contract not found");
-            roots[i] = root;
+            require(proof != bytes32(0), "AccountableIssuer: aggregation on sub-contract not found");
+            witenessProofs[i] = proof;
         }
         // FIXME: Not allow reuse of witness at same contract? keep a map of witnesses
         // FIXME: consider use sha256(abi.encodePacked(roots, digests));
-        bytes32 evidencesRoot = CredentialSum.makeRoot(roots);
+        bytes32 evidencesRoot = CredentialSum.computeRoot(witenessProofs);
         _issue(subject, digest, evidencesRoot, witnesses);
         emit CredentialSigned(msg.sender, digest, block.number);
     }
@@ -128,27 +134,26 @@ abstract contract AccountableIssuer is Issuer {
      * issuers that stores the subject sub-credentials
      */
     // TODO: certify that the methods exists on the witnesses contracts before
-    // call them. Implements AccountableIssuerInterface
+    // call them. i.e. the contract implements AccountableIssuerInterface
     function verifyCredentialNode(address subject, bytes32 croot, address[] memory witnesses) internal view returns(bool) {
         require(croot != bytes32(0), "AccountableIssuer: root cannot be null");
         bytes32[] memory proofs = new bytes32[](witnesses.length);
         for (uint256 i = 0; i < witnesses.length; i++) {
             address witnessesAddress = address(witnesses[i]);
-            require(isIssuer[witnessesAddress], "AccountableIssuer: witnesses address not authorized");
+            require(authorizedIssuers[witnessesAddress], "AccountableIssuer: witnesses address not authorized");
             Issuer leaf = Issuer(witnessesAddress);
-            proofs[i] = leaf.getProof(subject);
-            if (leaf.isLeaf()) { // witness is a leaf, check all credentials
-                if (!leaf.verifyCredentialLeaf(subject, proofs[i])) {
-                    return false;
-                }
-            } else { // witness is a node, check sub-tree
+            proofs[i] = leaf.getRootProof(subject);
+            if (!leaf.verifyCredentialRoot(subject, proofs[i])) {
+                return false;
+            }
+            if (!leaf.isLeaf()) { // witness is a node, check sub-tree
                 AccountableIssuer node = AccountableIssuer(witnessesAddress);
-                if (!node.verifyCredentialTree(subject, proofs[i])) {
+                if (!node.verifyCredentialTree(subject)) {
                     return false;
                 }
             }
         }
-        return CredentialSum.verifyProof(croot, proofs);
+        return CredentialSum.verifyRoot(croot, proofs);
     }
 
     /**
@@ -157,16 +162,22 @@ abstract contract AccountableIssuer is Issuer {
      * root match with the current root on the root node and if all the 
      * sub-trees were correctly built.
      */
-    function verifyCredentialTree(address subject, bytes32 croot) public view returns(bool) {
-        require(croot != bytes32(0), "AccountableIssuer: root proof should not be zero");
-        if (!super.verifyCredentialLeaf(subject, croot)) {
-            return false;
-        }
+    function verifyCredentialTree(address subject) public view returns(bool) {
         bytes32[] memory digests = digestsBySubject(subject);
         assert(digests.length > 0);
+        // Verify local root if exists
+        if (root[subject].hasRoot()) {
+            if (!root[subject].verifySelfRoot(digests)) {
+                return false;
+            }
+        }
+        // Verify credential and potential subtrees
         for (uint256 i = 0; i < digests.length; i++) {
             CredentialProof memory c = issuedCredentials[digests[i]];
-            assert(c.insertedBlock != 0); // credentials must exist
+            assert(c.digest == digests[i]);
+            if (!super.verifyCredential(subject, digests[i])) {
+                return false;
+            }
             if(c.witnesses.length > 0) {
                 if (!verifyCredentialNode(subject, c.evidencesRoot, c.witnesses)){
                     return false;

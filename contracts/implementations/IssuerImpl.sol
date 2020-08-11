@@ -17,7 +17,8 @@ contract IssuerImpl is Issuer {
     }
 
     function deleteProof(address subject) public {
-        aggregatedProof._proofs[subject] = bytes32(0);
+        root[subject].proof = bytes32(0);
+        root[subject].insertedBlock = 0;
     }
 
 }
