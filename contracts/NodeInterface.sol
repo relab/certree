@@ -8,6 +8,7 @@ interface NodeInterface {
         address indexed createdBy,
         address indexed nodeAddress,
         address[] owners,
+        uint256 quorum,
         Role nodeRole
     );
 

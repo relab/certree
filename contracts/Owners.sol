@@ -23,7 +23,7 @@ contract Owners {
     }
 
     /**
-     * @dev Constructor
+     * @notice Constructor
      * @param ownersList is the array of all owners
      * @param quorumSize is the required number of owners to perform actions
      */
@@ -68,7 +68,7 @@ contract Owners {
     }
 
     /**
-     * @dev Change one of the owners
+     * @notice Change one of the owners
      * @param newOwner address of new owner
      */
     function changeOwner(address newOwner) public onlyOwner {

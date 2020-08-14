@@ -1,17 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.8.0;
-pragma experimental ABIEncoderV2;
 
 import "./ERC165Checker.sol";
 import "./NodeInterface.sol";
-// NodeFactory also imports Leaf and generate the following error on the Leaf contract:
-// "Definition of base has to precede definition of derived contract"
-// import "./NodeFactory.sol";
 
 abstract contract Node is NodeInterface {
-    address private _parent;
+    address immutable _parent;
 
-    Role internal _role = Role.Leaf;
+    Role immutable _role;
 
     address[] internal _childrenList;
     

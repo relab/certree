@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.8.0;
-pragma experimental ABIEncoderV2;
 
 library Notary {
     // Logged when a credential is issued/created.
@@ -30,6 +29,7 @@ library Notary {
     /**
      * @notice CredentialProof represents an on-chain proof that a
      * verifiable credential was created and signed by an issuer.
+     * @dev it is a node of the credential tree of a subject.
      */
     struct CredentialProof {
         uint256 signed; // Amount of owners who signed
@@ -41,7 +41,7 @@ library Notary {
         address subject; // The entity address refered by a proof
         bytes32 digest; // The digest of the credential stored (e.g. Swarm/IPFS hash)
         bytes32 evidencesRoot; // if is a leaf root is zero otherwise is the result of the aggregation of the digests at the witnesses
-        address[] witnesses; // if witnesses is empty is a leaf notary, otherwise is a list of node notaries
+        address[] witnesses; // if witnesses is empty is a leaf notary, otherwise is a list of inner notaries
     }
 
     /**
@@ -55,6 +55,9 @@ library Notary {
         bytes32 reason; // digest of the reason of the revocation
     }
 
+    /**
+     * @notice define the credential tree structure
+     */
     struct CredentialTree {
         // Incremental-only counter for issued credentials per subject
         mapping(address => uint256) nonce;
@@ -88,7 +91,18 @@ library Notary {
         return self.revoked[digest].revokedBlock != 0;
     }
 
-    function issue(CredentialTree storage self, address subject, bytes32 digest, bytes32 eRoot, address[] memory witnesses)
+    /**
+     * @notice Verify if a digest was already certified
+     * (i.e. signed by all parties)
+     */
+    function certified(CredentialTree storage self, bytes32 digest) public view returns (bool) {
+        return self.issued[digest].approved;
+    }
+
+    /**
+     * @notice issue a credential proof ensuring an append-only property
+     */
+    function _issue(CredentialTree storage self, address subject, bytes32 digest, bytes32 eRoot, address[] memory witnesses)
         internal
     {
         require(
@@ -138,7 +152,11 @@ library Notary {
         self.ownersSigned[digest][msg.sender] = true;
     }
 
-    function approve(CredentialTree storage self, bytes32 digest, uint quorum) internal returns (bool) {
+    /**
+     * @notice approve the emission of a quorum signed credential proof
+     * @dev must be called by the subject of the credential
+     */
+    function _approve(CredentialTree storage self, bytes32 digest, uint quorum) internal returns (bool) {
         require(
             self.issued[digest].subject == msg.sender,
             "Notary/wrong subject"
@@ -157,7 +175,13 @@ library Notary {
         return true;
     }
 
-    function revoke(CredentialTree storage self, bytes32 digest, bytes32 reason) internal {
+    /**
+     * @notice register the revocation of a credential
+     * @dev can be called either by the issuer or by the subject
+     * of the credential
+     */
+    // TODO: quorum approval for revocation?
+    function _revoke(CredentialTree storage self, bytes32 digest, bytes32 reason) internal {
         require(
             self.issued[digest].insertedBlock != 0,
             "Notary/credential not found"
@@ -172,20 +196,12 @@ library Notary {
         );
         // TODO: analyse the consequence of deleting the proof.
         // delete self.issued[digest];
-        emit CredentialRevoked(
-            digest,
-            subject,
-            msg.sender,
-            block.number,
-            reason
-        );
-    }
-
-    /**
-     * @notice Verify if a digest was already certified
-     * (i.e. signed by all parties)
-     */
-    function certified(CredentialTree storage self, bytes32 digest) public view returns (bool) {
-        return self.issued[digest].approved;
+        // emit CredentialRevoked(
+        //     digest,
+        //     subject,
+        //     msg.sender,
+        //     block.number,
+        //     reason
+        // );
     }
 }

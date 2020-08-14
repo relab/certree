@@ -5,7 +5,7 @@ pragma solidity >=0.7.0 <0.8.0;
 
 /**
  * @title Timed
- * @dev Limits the contract actions based on a time interval.
+ * @notice Limits the contract actions based on a time interval.
  */
 abstract contract Timed {
     // using SafeMath for uint256;
@@ -20,7 +20,7 @@ abstract contract Timed {
     event IssuerPeriodExtended(uint256 prevEndingTime, uint256 newEndingTime);
 
     /**
-     * @dev Reverts if not in Issuer time range.
+     * @notice Reverts if not in Issuer time range.
      */
     modifier onlyAfterStart {
         require(
@@ -39,7 +39,6 @@ abstract contract Timed {
     }
 
     /**
-     * @dev Constructor, takes Issuer starting and ending times.
      * @param startingTime Issuer starting time
      * @param endingTime Issuer ending time
      */
@@ -82,7 +81,7 @@ abstract contract Timed {
     }
 
     /**
-     * @dev Checks whether the notarization period has already elapsed.
+     * @notice Checks whether the notarization period has already elapsed.
      * @return Whether Issuer period has elapsed
      */
     function hasEnded() public view returns (bool) {
@@ -99,7 +98,7 @@ abstract contract Timed {
     }
 
     /**
-     * @dev Extend the notarization time.
+     * @notice Extend the notarization time.
      * @param newEndingTime the new Issuer ending time
      */
     function _extendTime(uint256 newEndingTime) internal whileNotEnded {

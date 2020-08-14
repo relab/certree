@@ -9,7 +9,7 @@ import "./Timed.sol";
  */
 contract TimedIssuer is Timed, Issuer {
     /**
-    * @dev Constructor creates a Issuer contract
+    * @notice Constructor creates a Issuer contract
     */
     constructor(
         address[] memory owners,
@@ -26,25 +26,27 @@ contract TimedIssuer is Timed, Issuer {
     }
 
     /**
-     * @dev issue a credential proof for enrolled students
+     * @notice register a credential prooffor a given subject
      */
     function registerCredential(address subject, bytes32 digest)
         public
-        override
         onlyOwner
         whileNotEnded
     {
-        _issue(subject, digest, bytes32(0), new address[](0));
+        _register(subject, digest, bytes32(0), new address[](0));
         emit CredentialSigned(msg.sender, digest, block.number);
     }
 
-    // FIXME: only allow onwer to call the aggregation? If so, the faculty contract will not be able to call the method, and the teacher will need to call it
-    function aggregateCredentials(address student)
+    /**
+     * @notice generate the root for a given subject
+     */
+    function aggregateCredentials(address subject)
         public
         override
+        onlyOwner
         returns (bytes32)
     {
         require(hasEnded(), "IssuerImpl: IssuerImpl not ended yet");
-        return super.aggregateCredentials(student);
+        return super.aggregateCredentials(subject);
     }
 }

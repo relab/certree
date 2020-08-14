@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.8.0;
-pragma experimental ABIEncoderV2;
 
 library CredentialSum {
 
@@ -21,8 +20,13 @@ library CredentialSum {
     );
 
     modifier existsRoot(Root storage self) {
-        require(self.proof != bytes32(0), "CredentialSum: proof not exists");
+        require(self.proof != bytes32(0), "CredentialSum/proof not exists");
         //TODO: if is != zero, then use it as input too in the aggregation
+        _;
+    }
+
+    modifier notEmpty(bytes32[] memory digests) {
+        require(digests.length > 0, "CredentialSum/empty list");
         _;
     }
 
@@ -45,12 +49,9 @@ library CredentialSum {
     // Aggregate credentials and produce a proof of it
     function generateRoot(Root storage self, address subject, bytes32[] memory digests)
         public
+        notEmpty(digests)
         returns (bytes32)
     {
-        require(
-            digests.length > 0,
-            "CredentialSum: the list of digests must not be empty"
-        );
         //TODO: if (self.proof != bytes32(0)) append to it
         bytes32 root = computeRoot(digests);
         self.proof = root;
@@ -65,18 +66,15 @@ library CredentialSum {
     function computeRoot(bytes32[] memory digests)
         public
         pure
+        notEmpty(digests)
         returns (bytes32)
     {
-        require(
-            digests.length > 0,
-            "CredentialSum: the list of digests must not be empty"
-        );
         // FIXME: consider use sha256(abi.encode(digests));
         return keccak256(abi.encode(digests));
     }
 
     /**
-     * @dev verifySelfRoot checks if the stored proof was generated using
+     * @dev verifySelfRoot checks if the stored root was generated using
      * the given list of digests
      */
     function verifySelfRoot(Root storage self, bytes32[] memory digests)
@@ -90,10 +88,10 @@ library CredentialSum {
 
     /**
      * @dev verifyRoot checks if the given list of digests generates the
-     * requested proof
+     * given root
      */
     function verifyRoot(bytes32 root, bytes32[] calldata digests)
-        external
+        public
         pure
         returns (bool)
     {
