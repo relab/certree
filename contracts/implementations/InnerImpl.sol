@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.8.0;
 
-import "../Inner.sol";
+import "../node/Inner.sol";
 
 contract InnerImpl is Inner {
 

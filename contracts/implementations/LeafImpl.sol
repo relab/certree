@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.8.0;
 
-import "../Leaf.sol";
+import "../node/Leaf.sol";
 
 contract LeafImpl is Leaf {
     constructor(address[] memory owners, uint256 quorum)

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.8.0;
 
-import "./ERC165Checker.sol";
-import "./CredentialSum.sol";
-import "./Issuer.sol";
+import "../ERC165Checker.sol";
+import "../aggregator/CredentialSum.sol";
+import "../notary/Issuer.sol";
+import "../notary/Notary.sol";
 import "./Node.sol";
 import "./Leaf.sol";
 import "./NodeFactory.sol";
-import "./Notary.sol";
 
 contract Inner is Node, Issuer {
 

@@ -10,7 +10,7 @@ library Notary {
         uint256 insertedBlock
     );
 
-    // Logged when a credential is revoked by some owner.
+    // Logged when a credential is revoked by some owner or by the subject.
     event CredentialRevoked(
         bytes32 indexed digest,
         address indexed subject,

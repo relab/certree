@@ -2,10 +2,10 @@
 pragma solidity >=0.7.0 <0.8.0;
 // pragma experimental ABIEncoderV2;
 
-import "./ERC165.sol";
+import "../ERC165.sol";
+import "../Owners.sol";
+import "../aggregator/CredentialSum.sol";
 import "./IssuerInterface.sol";
-import "./Owners.sol";
-import "./CredentialSum.sol";
 import "./Notary.sol";
 
 /**

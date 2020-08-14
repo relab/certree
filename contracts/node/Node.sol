@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.8.0;
 
-import "./ERC165Checker.sol";
+import "../ERC165Checker.sol";
 import "./NodeInterface.sol";
 
 abstract contract Node is NodeInterface {
