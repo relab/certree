@@ -33,7 +33,7 @@ library Notary {
     );
 
     /**
-     * @dev CredentialProof represents an on-chain proof that a
+     * @notice CredentialProof represents an on-chain proof that a
      * verifiable credential was created and signed by an issuer.
      */
     struct CredentialProof {
@@ -50,7 +50,7 @@ library Notary {
     }
 
     /**
-     * @dev RevocationProof represents an on-chain proof that a
+     * @notice RevocationProof represents an on-chain proof that a
      * verifiable credential was revoked by an issuer.
      */
     struct RevocationProof {
@@ -96,7 +96,7 @@ library Notary {
     }
 
     /**
-     * @dev verify if a credential proof was revoked
+     * @notice verify if a credential proof was revoked
      * @return true if a revocation exists, false otherwise.
      */
     function isRevoked(CredentialTree storage self, bytes32 digest) public view returns (bool) {
@@ -197,7 +197,8 @@ library Notary {
     }
 
     /**
-     * @dev Verify if a digest was already certified (i.e. signed by all parties)
+     * @notice Verify if a digest was already certified
+     * (i.e. signed by all parties)
      */
     function certified(CredentialTree storage self, bytes32 digest) public view returns (bool) {
         return self.issued[digest].approved;

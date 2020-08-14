@@ -1,39 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.0 <0.7.0;
+pragma solidity >=0.6.0 <0.8.0;
 pragma experimental ABIEncoderV2;
 
 // TODO: Use AggregatorInterface
 import "./CredentialSum.sol";
 
 interface IssuerInterface {
-    /**
-     * @dev CredentialProof represents an on-chain proof that a
-     * verifiable credential was created and signed by an issuer.
-     */
-    struct CredentialProof {
-        uint256 signed; // Amount of owners who signed
-        bool approved; // Whether the subject approved the credential
-        uint256 insertedBlock; // The block number of the proof creation
-        uint256 blockTimestamp; // The block timestamp of the proof creation
-        uint256 nonce; // Increment-only counter of credentials of the same subject
-        address issuer; // The issuer address of this proof
-        address subject; // The entity address refered by a proof
-        bytes32 digest; // The digest of the credential stored (e.g. Swarm/IPFS hash)
-        bytes32 evidencesRoot; // if is a leaf root is zero otherwise is the result of the aggregation of the digests at the witnesses
-        address[] witnesses; // if witnesses is empty is a leaf notary, otherwise is a list of node notaries
-    }
-
-    /**
-     * @dev RevocationProof represents an on-chain proof that a
-     * verifiable credential was revoked by an issuer.
-     */
-    struct RevocationProof {
-        address issuer;
-        address subject;
-        uint256 revokedBlock; // The block number of the revocation (0 if not revoked)
-        bytes32 reason; // digest of the reason of the revocation
-    }
-
     // Logged when a credential is issued/created.
     event CredentialIssued(
         bytes32 indexed digest,
@@ -59,14 +31,9 @@ interface IssuerInterface {
     );
 
     /**
-     * @return true if the issuer contract is a leaf
-     */
-    function isLeaf() external view returns(bool);
-
-    /**
      * @return the registered digests of a subject
      */
-    function digestsBySubject(address subject) external view returns (bytes32[] memory);
+    function digestsOf(address subject) external view returns (bytes32[] memory);
 
     /**
      * @return the aggregated proof of a subject
@@ -76,7 +43,7 @@ interface IssuerInterface {
     /**
      * @return the witnesses of a proof
      */
-    function getWitnesses(bytes32 digest) external view returns(address[] memory);
+    function witnessesOf(bytes32 digest) external view returns(address[] memory);
 
     /**
      * @dev isRevoked checks if the credential was revoked based on it's digest.
