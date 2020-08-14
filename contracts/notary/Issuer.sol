@@ -14,7 +14,7 @@ import "./Notary.sol";
  * establishing a casual order between the credential proofs.
  */
  // TODO: Allow upgradeable contract using similar approach of https://github.com/PeterBorah/ether-router
- abstract contract Issuer is IssuerInterface, Owners, ERC165 {
+ contract Issuer is IssuerInterface, Owners, ERC165 {
     using Notary for Notary.CredentialTree;
     Notary.CredentialTree private _tree;
 
@@ -275,12 +275,13 @@ import "./Notary.sol";
     // TODO: check if subject isn't a contract address?
     // Use `extcodesize` can be tricky since it will also return 0 for the constructor method of a contract, but it seems that isn't a problem in this context, since it isn't being used to prevent any action.
     // TODO: improve the quorum check
-    function _register(address subject, bytes32 digest, bytes32 eRoot, address[] memory witnesses)
-        internal
+    function register(address subject, bytes32 digest, bytes32 eRoot, address[] memory witnesses)
+        public
         onlyOwner
         notRevoked(digest)
     {
         require(!isOwner[subject], "Issuer/subject cannot be the issuer");
         _tree._issue(subject, digest, eRoot, witnesses);
+        emit CredentialSigned(msg.sender, digest, block.number);
     }
 }

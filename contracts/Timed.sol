@@ -17,7 +17,7 @@ abstract contract Timed {
      * @param newEndingTime new ending time
      * @param prevEndingTime old ending time
      */
-    event IssuerPeriodExtended(uint256 prevEndingTime, uint256 newEndingTime);
+    event PeriodExtended(uint256 prevEndingTime, uint256 newEndingTime);
 
     /**
      * @notice Reverts if not in Issuer time range.
@@ -25,7 +25,7 @@ abstract contract Timed {
     modifier onlyAfterStart {
         require(
             isStarted(),
-            "Timed: the notarization period didn't start yet"
+            "Timed/period not started yet"
         );
         _;
     }
@@ -33,7 +33,7 @@ abstract contract Timed {
     modifier whileNotEnded {
         require(
             stillRunning(),
-            "Timed: the notarization period has already ended"
+            "Timed/period has already ended"
         );
         _;
     }
@@ -46,12 +46,12 @@ abstract contract Timed {
         // solhint-disable-next-line not-rely-on-time
         require(
             startingTime >= block.timestamp,
-            "Timed: starting time cannot be in the past"
+            "Timed/time in the past"
         );
         // solhint-disable-next-line max-line-length
         require(
             endingTime > startingTime,
-            "Timed: ending time cannot be smaller than starting time"
+            "Timed/ending time is smaller than starting time"
         );
 
         _startingTime = startingTime;
@@ -105,10 +105,10 @@ abstract contract Timed {
         // solhint-disable-next-line max-line-length
         require(
             newEndingTime > _endingTime,
-            "Timed: new ending time is before current ending time"
+            "Timed/new time before current ending time"
         );
 
-        emit IssuerPeriodExtended(_endingTime, newEndingTime);
+        emit PeriodExtended(_endingTime, newEndingTime);
         _endingTime = newEndingTime;
     }
 }

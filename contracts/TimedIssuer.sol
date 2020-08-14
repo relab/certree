@@ -2,12 +2,16 @@
 pragma solidity >=0.7.0 <0.8.0;
 
 import "./notary/Issuer.sol";
+import "./Owners.sol";
 import "./Timed.sol";
 
 /**
  * @title An Issuer Implementation
  */
-contract TimedIssuer is Timed, Issuer {
+contract TimedIssuer is Timed, Owners {
+
+    Issuer private _issuer;
+
     /**
     * @notice Constructor creates a Issuer contract
     */
@@ -16,8 +20,8 @@ contract TimedIssuer is Timed, Issuer {
         uint256 quorum,
         uint256 startingTime,
         uint256 endingTime
-    ) Timed(startingTime, endingTime) Issuer(owners, quorum) {
-        // solhint-disable-previous-line no-empty-blocks
+    ) Timed(startingTime, endingTime) Owners(owners, quorum) {
+        _issuer = new Issuer(owners, quorum);
     }
 
     // TODO: add tests for extenting time
@@ -33,8 +37,7 @@ contract TimedIssuer is Timed, Issuer {
         onlyOwner
         whileNotEnded
     {
-        _register(subject, digest, bytes32(0), new address[](0));
-        emit CredentialSigned(msg.sender, digest, block.number);
+        _issuer.register(subject, digest, bytes32(0), new address[](0));
     }
 
     /**
@@ -42,11 +45,10 @@ contract TimedIssuer is Timed, Issuer {
      */
     function aggregateCredentials(address subject)
         public
-        override
         onlyOwner
         returns (bytes32)
     {
-        require(hasEnded(), "IssuerImpl: IssuerImpl not ended yet");
-        return super.aggregateCredentials(subject);
+        require(hasEnded(), "TimedIssuer/period not ended yet");
+        return _issuer.aggregateCredentials(subject);
     }
 }

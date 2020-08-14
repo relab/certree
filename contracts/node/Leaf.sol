@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.8.0;
 
-import "../notary/Issuer.sol";
 import "./Node.sol";
 
-contract Leaf is Node, Issuer {
+contract Leaf is Node {
 
     constructor(address[] memory owners, uint256 quorum)
-        Node(Role.Leaf)
-        Issuer(owners, quorum)
+        Node(Role.Leaf, owners, quorum)
     {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -25,7 +23,6 @@ contract Leaf is Node, Issuer {
         // TODO: verify the cost of using the following variables instead
         // bytes32 zero;
         // address[] memory none;
-        _register(subject, digest, bytes32(0), new address[](0));
-        emit CredentialSigned(msg.sender, digest, block.number);
+        _issuer.register(subject, digest, bytes32(0), new address[](0));
     }
 }

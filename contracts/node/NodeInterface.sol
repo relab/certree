@@ -9,7 +9,7 @@ interface NodeInterface {
         address indexed nodeAddress,
         address[] owners,
         uint256 quorum,
-        Role nodeRole
+        Role role
     );
 
     /**

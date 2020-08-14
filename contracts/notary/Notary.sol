@@ -119,7 +119,7 @@ library Notary {
                 lastNonce = self.nonce[subject] - 1;
                 assert(self.digests[subject].length > 0);
                 bytes32 previousDigest = self.digests[subject][lastNonce];
-                Notary.CredentialProof memory c = self.issued[previousDigest];
+                CredentialProof memory c = self.issued[previousDigest];
                 // Ensure that a previous certificate happens before the new one.
                 // solhint-disable-next-line expression-indent
                 require(c.insertedBlock < block.number, "Notary/block number violation");
@@ -188,7 +188,7 @@ library Notary {
         );
         address subject = self.issued[digest].subject;
         assert(subject != address(0));
-        self.revoked[digest] = Notary.RevocationProof(
+        self.revoked[digest] = RevocationProof(
             msg.sender, // who is this sender?
             subject,
             block.number,

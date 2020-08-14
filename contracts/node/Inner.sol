@@ -3,58 +3,15 @@ pragma solidity >=0.7.0 <0.8.0;
 
 import "../ERC165Checker.sol";
 import "../aggregator/CredentialSum.sol";
-import "../notary/Issuer.sol";
-import "../notary/Notary.sol";
 import "./Node.sol";
 import "./Leaf.sol";
-import "./NodeFactory.sol";
 
-contract Inner is Node, Issuer {
+contract Inner is Node {
 
     constructor(address[] memory owners, uint256 quorum)
-        Node(Role.Inner)
-        Issuer(owners, quorum)
+        Node(Role.Inner, owners, quorum)
     {
         // solhint-disable-previous-line no-empty-blocks
-    }
-
-    /**
-     * @notice create a new node on the certification tree
-     * The new node can be a Leaf or a Inner node.
-     * @param owners The list of owners of the new node
-     * @param quorum The quorum of signatures required to perform actions
-     * in the new node
-     * @param role The role of the node (i.e. Leaf or Inner)
-     */
-    function createChild(
-        address[] memory owners,
-        uint256 quorum,
-        Role role
-    ) public returns (address) {
-        require(_role == Role.Inner, "Inner/Node must be Inner");
-
-        if (role == Role.Leaf) {
-            Leaf leaf = NodeFactory.createLeaf(owners, quorum);
-            _addNode(address(leaf));
-            emit NodeCreated(
-                msg.sender,
-                address(leaf),
-                owners,
-                quorum,
-                Role.Leaf
-            );
-            return address(leaf);
-        }
-        Inner inner = NodeFactory.createInner(owners, quorum);
-        _addNode(address(inner));
-        emit NodeCreated(
-            msg.sender,
-            address(inner),
-            owners,
-            quorum,
-            Role.Inner
-        );
-        return address(inner);
     }
 
     /**
@@ -90,8 +47,7 @@ contract Inner is Node, Issuer {
         // FIXME: Not allow reuse of witness at same contract? keep a map of witnesses?
         // FIXME: consider use sha256(abi.encodePacked(roots, digests));
         bytes32 evidencesRoot = CredentialSum.computeRoot(witenessProofs);
-        _register(subject, digest, evidencesRoot, witnesses);
-        emit CredentialSigned(msg.sender, digest, block.number);
+        _issuer.register(subject, digest, evidencesRoot, witnesses);
     }
     
     /**
@@ -103,8 +59,7 @@ contract Inner is Node, Issuer {
         public
         onlyOwner
     {
-        _register(subject, digest, bytes32(0), new address[](0));
-        emit CredentialSigned(msg.sender, digest, block.number);
+        _issuer.register(subject, digest, bytes32(0), new address[](0));
     }
 
     /**
@@ -115,11 +70,11 @@ contract Inner is Node, Issuer {
      * @param subject The subject of the credential tree
      */
     function verifyCredentialTree(address subject) public view returns(bool) {
-        bytes32[] memory digests = getDigests(subject);
+        bytes32[] memory digests = _issuer.getDigests(subject);
         assert(digests.length > 0);
         // Verify local root if exists
-        if (hasRoot(subject)) {
-            if (!verifyRootOf(subject, digests)) {
+        if (_issuer.hasRoot(subject)) {
+            if (!_issuer.verifyRootOf(subject, digests)) {
                 return false;
             }
         }
@@ -128,12 +83,12 @@ contract Inner is Node, Issuer {
             // FIXME: Solidity does not support this feature yet:
             // UnimplementedFeatureError: Encoding type "struct Notary.CredentialProof memory" not yet implemented.
             // Notary.CredentialProof memory c = issued(digests[i]);
-            assert(isIssued(digests[i]));
-            if (!super.verifyCredential(subject, digests[i])) {
+            assert(_issuer.isIssued(digests[i]));
+            if (!_issuer.verifyCredential(subject, digests[i])) {
                 return false;
             }
-            if(witnessesLength(digests[i]) > 0) {
-                if (!_verifyCredentialNode(subject, getEvidenceRoot(digests[i]), getWitnesses(digests[i]))){
+            if(_issuer.witnessesLength(digests[i]) > 0) {
+                if (!_verifyCredentialNode(subject, _issuer.getEvidenceRoot(digests[i]), _issuer.getWitnesses(digests[i]))){
                     return false;
                 }
             }
@@ -155,17 +110,17 @@ contract Inner is Node, Issuer {
     //        - not allow adding node where the sender is an owner of the parent
     //        - this function can be used by derivants to allows cycles,
     // and there is no easy way to detect it other than going through all children of `nodeAddress` and checking if any reference this.
-    function _addNode(address nodeAddress) internal {
-        require(address(this) != nodeAddress, "Node/cannot add itself");
-        require(!_children[nodeAddress], "Node/node already added");
-        require(_role == Role.Inner, "Node/Leaves cannot have children");
+    function _addNode(address nodeAddress) internal onlyOwner {
+        require(address(this) != nodeAddress, "Inner/cannot add itself");
+        require(!_children[nodeAddress], "Inner/node already added");
+        require(_role == Role.Inner, "Inner/Leaves cannot have children");
 
         bool isIssuer = ERC165Checker.supportsInterface(nodeAddress, type(IssuerInterface).interfaceId);
         bool isNode = ERC165Checker.supportsInterface(nodeAddress, type(NodeInterface).interfaceId);
         assert(isIssuer && isNode);
 
         _children[nodeAddress] =  true;
-        _childrenList.push(nodeAddress);
+        _childrenList.push(Node(nodeAddress));
     }
 
     //TODO: Remove nodes (require quorum)
