@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.0 <0.8.0;
-// pragma experimental ABIEncoderV2;
+pragma solidity >=0.7.0 <0.8.0;
 
 import "./Issuer.sol";
 import "./Timed.sol";
@@ -17,7 +16,7 @@ contract TimedIssuer is Timed, Issuer {
         uint256 quorum,
         uint256 startingTime,
         uint256 endingTime
-    ) public Issuer(owners, quorum, true) Timed(startingTime, endingTime) {
+    ) Timed(startingTime, endingTime) Issuer(owners, quorum) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -29,13 +28,14 @@ contract TimedIssuer is Timed, Issuer {
     /**
      * @dev issue a credential proof for enrolled students
      */
-    function registerCredential(address student, bytes32 digest)
+    function registerCredential(address subject, bytes32 digest)
         public
         override
         onlyOwner
         whileNotEnded
     {
-        super.registerCredential(student, digest);
+        _issue(subject, digest, bytes32(0), new address[](0));
+        emit CredentialSigned(msg.sender, digest, block.number);
     }
 
     // FIXME: only allow onwer to call the aggregation? If so, the faculty contract will not be able to call the method, and the teacher will need to call it

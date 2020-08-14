@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.0 <0.8.0;
-
-import "./ERC165.sol";
-import "./ERC165Checker.sol";
-import "./CredentialSum.sol";
-import "./IssuerInterface.sol";
-import "./Owners.sol";
+pragma solidity >=0.7.0 <0.8.0;
+pragma experimental ABIEncoderV2;
 
 library Notary {
     // Logged when a credential is issued/created.
@@ -78,21 +73,11 @@ library Notary {
     }
 
     /**
-     * @return the registered digests of a subject
+     * @notice verify if a credential proof was issued
+     * @return true if an emission proof exists, false otherwise.
      */
-    function digestsOf(CredentialTree storage self, address subject)
-        public
-        view
-        returns (bytes32[] memory)
-    {
-        return self.digests[subject];
-    }  
-    
-    /**
-     * @return the witnesses of a proof
-     */
-    function witnessesOf(CredentialTree storage self, bytes32 digest) public view returns(address[] memory){
-        return self.issued[digest].witnesses;
+    function isIssued(CredentialTree storage self, bytes32 digest) public view returns (bool) {
+        return self.issued[digest].digest != bytes32(0);
     }
 
     /**

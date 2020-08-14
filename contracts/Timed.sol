@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity >=0.7.0 <0.8.0;
 
 // import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -43,7 +43,7 @@ abstract contract Timed {
      * @param startingTime Issuer starting time
      * @param endingTime Issuer ending time
      */
-    constructor(uint256 startingTime, uint256 endingTime) public {
+    constructor(uint256 startingTime, uint256 endingTime) {
         // solhint-disable-next-line not-rely-on-time
         require(
             startingTime >= block.timestamp,

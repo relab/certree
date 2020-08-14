@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity >=0.7.0 <0.8.0;
 pragma experimental ABIEncoderV2;
 
 import "./ERC165.sol";
@@ -44,19 +44,53 @@ import "./Notary.sol";
     }
 
     /**
+     * @return the issued credential proof
+     */
+    // function getIssuedProof(bytes32 digest)
+    //     public
+    //     view
+    //     returns (Notary.CredentialProof memory)
+    // {
+    //     return _tree.issued[digest];
+    // }
+
+    // FIXME: Solidity does not support the feature above yet,
+    // so we define some getter methods below.
+    /**
      * @return the registered digests of a subject
      */
-    function digestsOf(address subject)
+    function getDigests(address subject)
         public
         view
         override
         returns (bytes32[] memory)
     {
-        return _tree.digestsOf(subject);
+        return _tree.digests[subject];
     }
 
     /**
-     * @return the aggregated proof of a subject
+     * @return the lenght of the witnesses of an issued credential proof
+     */
+    function witnessesLength(bytes32 digest) public view returns(uint256) {
+        return _tree.issued[digest].witnesses.length;
+    }
+
+    /**
+     * @return the witnesses of an issued credential proof
+     */
+    function getWitnesses(bytes32 digest) public view override returns(address[] memory){
+        return _tree.issued[digest].witnesses;
+    }
+
+    /**
+     * @return the root of the evidences of an issued credential proof.
+     */
+    function getEvidenceRoot(bytes32 digest) public view override returns (bytes32) {
+        return _tree.issued[digest].evidencesRoot;
+    }
+    
+    /**
+     * @return the aggregated root of all credentials of a subject.
      * i.e. root of the credential tree in this contract instance
      */
     function getRootProof(address subject) public view override returns (bytes32) {
@@ -64,10 +98,11 @@ import "./Notary.sol";
     }
 
     /**
-     * @return the witnesses of a proof
+     * @notice verify if a credential proof was issued
+     * @return true if an emission proof exists, false otherwise.
      */
-    function witnessesOf(bytes32 digest) public view override returns(address[] memory){
-        return _tree.witnessesOf(digest);
+    function isIssued(bytes32 digest) public view override returns (bool) {
+        return _tree.isIssued(digest);
     }
 
     /**
@@ -76,6 +111,22 @@ import "./Notary.sol";
      */
     function isRevoked(bytes32 digest) public view override returns (bool) {
         return _tree.isRevoked(digest);
+    }
+
+    function hasRoot(address subject)
+        public
+        view
+        returns (bool)
+    {
+        return root[subject].hasRoot();
+    }
+
+    function verifyRootOf(address subject, bytes32[] memory digests)
+        public
+        view
+        returns (bool)
+    {
+        return root[subject].verifySelfRoot(digests);
     }
 
     // TODO: check if subject isn't a contract address?
