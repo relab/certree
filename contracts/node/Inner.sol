@@ -8,7 +8,7 @@ import "./Leaf.sol";
 
 contract Inner is Node {
 
-    constructor(address[] memory owners, uint256 quorum)
+    constructor(address[] memory owners, uint8 quorum)
         Node(Role.Inner, owners, quorum)
     {
         // solhint-disable-previous-line no-empty-blocks
@@ -28,7 +28,7 @@ contract Inner is Node {
         bytes32 digest,
         address[] memory witnesses
         // FIXME: the number of witnesses should be bounded to avoid gas limit on loops
-    ) public onlyOwner {
+    ) public onlyOwner isInitialized {
         require(witnesses.length > 0, "Inner/witness not found");
         bytes32[] memory witenessProofs = new bytes32[](witnesses.length);
         for (uint256 i = 0; i < witnesses.length; i++) {
@@ -110,7 +110,7 @@ contract Inner is Node {
     //        - not allow adding node where the sender is an owner of the parent
     //        - this function can be used by derivants to allows cycles,
     // and there is no easy way to detect it other than going through all children of `nodeAddress` and checking if any reference this.
-    function _addNode(address nodeAddress) internal onlyOwner {
+    function _addNode(address nodeAddress) internal onlyOwner isInitialized {
         require(address(this) != nodeAddress, "Inner/cannot add itself");
         require(!_children[nodeAddress], "Inner/node already added");
         require(_role == Role.Inner, "Inner/Leaves cannot have children");
@@ -120,7 +120,7 @@ contract Inner is Node {
         assert(isIssuer && isNode);
 
         _children[nodeAddress] =  true;
-        _childrenList.push(Node(nodeAddress));
+        _childrenList.push(nodeAddress);
     }
 
     //TODO: Remove nodes (require quorum)

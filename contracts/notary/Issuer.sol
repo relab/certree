@@ -39,7 +39,7 @@ import "./Notary.sol";
         _;
     }
 
-    constructor(address[] memory owners, uint256 quorum)
+    constructor(address[] memory owners, uint8 quorum)
         Owners(owners, quorum)
     {
         // solhint-disable-previous-line no-empty-blocks
@@ -100,7 +100,7 @@ import "./Notary.sol";
      * @return true if an emission proof exists, false otherwise.
      */
     function isIssued(bytes32 digest) public view override returns (bool) {
-        return _tree.isIssued(digest);
+        return _tree._isIssued(digest);
     }
 
     /**
@@ -109,7 +109,7 @@ import "./Notary.sol";
      * @return true if a revocation exists, false otherwise.
      */
     function isRevoked(bytes32 digest) public view override returns (bool) {
-        return _tree.isRevoked(digest);
+        return _tree._isRevoked(digest);
     }
 
     /**
@@ -141,7 +141,6 @@ import "./Notary.sol";
     function confirmCredential(bytes32 digest) public override notRevoked(digest) {
         require(quorum() > 0,"Issuer/no quorum found");
         require(_tree._approve(digest, quorum()), "Issuer/approval failed");
-        emit CredentialSigned(msg.sender, digest, block.number);
     }
 
     /**
@@ -149,7 +148,7 @@ import "./Notary.sol";
      * @param digest The digest of the credential to be verified
      */
     function certified(bytes32 digest) public view override returns (bool) {
-        return _tree.certified(digest);
+        return _tree._certified(digest);
     }
 
     /**
@@ -160,6 +159,7 @@ import "./Notary.sol";
      * @dev The reason should be publicaly available for anyone to inspect
      * i.e. Stored in a public swarm/ipfs address
      */
+    // TODO: quorum approval for revocation?
     function revokeCredential(bytes32 digest, bytes32 reason)
         public
         override
@@ -168,14 +168,6 @@ import "./Notary.sol";
         address subject = _tree.issued[digest].subject;
         require(isOwner[msg.sender] || subject == msg.sender, "Issuer/sender not authorized");
         _tree._revoke(digest, reason);
-        // TODO: emit events on the library instead?
-        emit CredentialRevoked(
-            digest,
-            subject,
-            msg.sender,
-            block.number,
-            reason
-        );
     }
 
     /**
@@ -232,13 +224,7 @@ import "./Notary.sol";
         existsCredentials(subject)
         returns (bool)
     {
-        // FIXME: restrict size of `digests` array
-        for (uint256 i = 0; i < _tree.digests[subject].length; i++) {
-            if (!verifyCredential(subject, _tree.digests[subject][i])) {
-                return false;
-            }
-        }
-        return true;
+        return _tree._verifyAllCredentials(subject);
     }
 
     /**
@@ -254,15 +240,7 @@ import "./Notary.sol";
         override
         returns (bool)
     {
-        require(
-            _tree.issued[digest].insertedBlock != 0,
-            "Issuer/credential not found"
-        );
-        require(
-            _tree.issued[digest].subject == subject,
-            "Issuer/credential not owned by subject"
-        );
-        return (certified(digest) && isRevoked(digest));
+        return _tree._verifyCredential(subject, digest);
     }
 
     /**
@@ -282,6 +260,6 @@ import "./Notary.sol";
     {
         require(!isOwner[subject], "Issuer/subject cannot be the issuer");
         _tree._issue(subject, digest, eRoot, witnesses);
-        emit CredentialSigned(msg.sender, digest, block.number);
+        // emit CredentialSigned(msg.sender, digest, block.number);
     }
 }

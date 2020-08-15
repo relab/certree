@@ -5,7 +5,7 @@ import "../node/Inner.sol";
 
 contract InnerImpl is Inner {
 
-    constructor(address[] memory owners, uint256 quorum)
+    constructor(address[] memory owners, uint8 quorum)
         Inner(owners, quorum)
     {
         // solhint-disable-previous-line no-empty-blocks

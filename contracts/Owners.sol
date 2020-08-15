@@ -5,20 +5,24 @@ pragma solidity >=0.7.0 <0.8.0;
  * @title Owners contract
 */
 contract Owners {
-    // Map of owners
-    mapping(address => bool) public isOwner;
+
+    // The required number of owners to authorize actions
+    uint8 private _quorum;
+
+    // Max number of owners
+    uint8 private constant MAX_OWNERS = (2**8) - 1;
 
     // List of owners
     address[] private _owners;
 
-    // The required number of owners to authorize actions
-    uint256 private _quorum;
+    // Map of owners
+    mapping(address => bool) public isOwner;
 
     // Logged when any owner change.
     event OwnerChanged(address indexed oldOwner, address indexed newOwner);
 
     modifier onlyOwner {
-        require(isOwner[msg.sender], "Owners: sender is not an owner");
+        require(isOwner[msg.sender], "Owners/sender is not an owner");
         _;
     }
 
@@ -27,16 +31,16 @@ contract Owners {
      * @param ownersList is the array of all owners
      * @param quorumSize is the required number of owners to perform actions
      */
-    constructor(address[] memory ownersList, uint256 quorumSize) {
+    constructor(address[] memory ownersList, uint8 quorumSize) {
         require(
-            ownersList.length > 0 && ownersList.length < 256,
-            "Owners: not enough owners"
+            ownersList.length > 0 && ownersList.length <= MAX_OWNERS,
+            "Owners/not enough owners"
         );
         require(
             quorumSize > 0 && quorumSize <= ownersList.length,
-            "Owners: quorum out of range"
+            "Owners/quorum out of range"
         );
-        for (uint256 i = 0; i < ownersList.length; ++i) {
+        for (uint8 i = 0; i < ownersList.length; ++i) {
             // prevent duplicate and zero value address attack
             assert(!isOwner[ownersList[i]] && ownersList[i] != address(0));
             isOwner[ownersList[i]] = true;
@@ -62,7 +66,7 @@ contract Owners {
     function quorum()
         public
         view
-        returns (uint256)
+        returns (uint8)
     {
         return _quorum;
     }
@@ -74,13 +78,13 @@ contract Owners {
     function changeOwner(address newOwner) public onlyOwner {
         require(
             !isOwner[newOwner] && newOwner != address(0),
-            "Owners: invalid address given"
+            "Owners/invalid address given"
         );
         // Owners should never be empty
-        assert(_owners.length > 0);
+        assert(_owners.length > 0 && _owners.length <= MAX_OWNERS);
         address[] memory ownersList = new address[](_owners.length);
         // create a new array of owners replacing the old one
-        for (uint256 i = 0; i < _owners.length; ++i) {
+        for (uint8 i = 0; i < _owners.length; ++i) {
             if (_owners[i] != msg.sender) {
                 ownersList[i] = _owners[i];
             } else {

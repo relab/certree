@@ -5,7 +5,7 @@ import "./Node.sol";
 
 contract Leaf is Node {
 
-    constructor(address[] memory owners, uint256 quorum)
+    constructor(address[] memory owners, uint8 quorum)
         Node(Role.Leaf, owners, quorum)
     {
         // solhint-disable-previous-line no-empty-blocks
@@ -19,6 +19,7 @@ contract Leaf is Node {
     function registerCredential(address subject, bytes32 digest)
         public
         onlyOwner
+        isInitialized
     {
         // TODO: verify the cost of using the following variables instead
         // bytes32 zero;

@@ -33,15 +33,15 @@ library Notary {
      */
     struct CredentialProof {
         uint256 signed; // Amount of owners who signed
-        bool approved; // Whether the subject approved the credential
         uint256 insertedBlock; // The block number of the proof creation
         uint256 blockTimestamp; // The block timestamp of the proof creation
         uint256 nonce; // Increment-only counter of credentials of the same subject
+        bytes32 digest; // The digest of the credential stored (e.g. Swarm/IPFS hash)
+        bool approved; // Whether the subject approved the credential
         address issuer; // The issuer address of this proof
         address subject; // The entity address refered by a proof
-        bytes32 digest; // The digest of the credential stored (e.g. Swarm/IPFS hash)
-        bytes32 evidencesRoot; // if is a leaf root is zero otherwise is the result of the aggregation of the digests at the witnesses
         address[] witnesses; // if witnesses is empty is a leaf notary, otherwise is a list of inner notaries
+        bytes32 evidencesRoot; // if is a leaf root is zero otherwise is the result of the aggregation of the digests at the witnesses
     }
 
     /**
@@ -77,30 +77,36 @@ library Notary {
 
     /**
      * @notice verify if a credential proof was issued
+     * @param digest The digest of the credential
      * @return true if an emission proof exists, false otherwise.
      */
-    function isIssued(CredentialTree storage self, bytes32 digest) public view returns (bool) {
+    function _isIssued(CredentialTree storage self, bytes32 digest) internal view returns (bool) {
         return self.issued[digest].digest != bytes32(0);
     }
 
     /**
      * @notice verify if a credential proof was revoked
+     * @param digest The digest of the credential
      * @return true if a revocation exists, false otherwise.
      */
-    function isRevoked(CredentialTree storage self, bytes32 digest) public view returns (bool) {
+    function _isRevoked(CredentialTree storage self, bytes32 digest) internal view returns (bool) {
         return self.revoked[digest].revokedBlock != 0;
     }
 
     /**
-     * @notice Verify if a digest was already certified
-     * (i.e. signed by all parties)
+     * @notice verify if a credential was signed by all parties
+     * @param digest The digest of the credential to be verified
      */
-    function certified(CredentialTree storage self, bytes32 digest) public view returns (bool) {
+    function _certified(CredentialTree storage self, bytes32 digest) internal view returns (bool) {
         return self.issued[digest].approved;
     }
 
     /**
      * @notice issue a credential proof ensuring an append-only property
+     * @param subject The subject of the credential
+     * @param digest The digest of the credential
+     * @param eRoot The resulted hash of all witnesses' roots
+     * @param witnesses The list of all witnesses contracts
      */
     function _issue(CredentialTree storage self, address subject, bytes32 digest, bytes32 eRoot, address[] memory witnesses)
         internal
@@ -128,15 +134,15 @@ library Notary {
             }
             self.issued[digest] = CredentialProof(
                 1,
-                false,
                 block.number,
                 block.timestamp, // solhint-disable-line not-rely-on-time
                 self.nonce[subject],
+                digest,
+                false,
                 msg.sender,
                 subject,
-                digest,
-                eRoot,
-                witnesses
+                witnesses,
+                eRoot
             );
             ++self.nonce[subject];
             self.digests[subject].push(digest); // append subject's credential hash
@@ -150,10 +156,12 @@ library Notary {
             ++self.issued[digest].signed;
         }
         self.ownersSigned[digest][msg.sender] = true;
+        emit CredentialSigned(msg.sender, digest, block.number);
     }
 
     /**
      * @notice approve the emission of a quorum signed credential proof
+     * @param digest The digest of the credential
      * @dev must be called by the subject of the credential
      */
     function _approve(CredentialTree storage self, bytes32 digest, uint quorum) internal returns (bool) {
@@ -171,16 +179,19 @@ library Notary {
         );
         self.issued[digest].approved = true;
         // EMIT events here or in the implementer?
-        // emit CredentialSigned(msg.sender, digest, block.number);
+        emit CredentialSigned(msg.sender, digest, block.number);
         return true;
     }
 
     /**
-     * @notice register the revocation of a credential
-     * @dev can be called either by the issuer or by the subject
-     * of the credential
+     * @notice revokeCredential revokes a credential for a given reason
+     * based on it's digest.
+     * @param digest The digest of the credential
+     * @param reason The hash of the reason of the revocation
+     * @dev The reason should be publicaly available for anyone to inspect
+     * (i.e. Stored in a public swarm/ipfs address). The function can be 
+     * called either by the issuer or by the subject of the credential.
      */
-    // TODO: quorum approval for revocation?
     function _revoke(CredentialTree storage self, bytes32 digest, bytes32 reason) internal {
         require(
             self.issued[digest].insertedBlock != 0,
@@ -196,12 +207,56 @@ library Notary {
         );
         // TODO: analyse the consequence of deleting the proof.
         // delete self.issued[digest];
-        // emit CredentialRevoked(
-        //     digest,
-        //     subject,
-        //     msg.sender,
-        //     block.number,
-        //     reason
-        // );
+        emit CredentialRevoked(
+            digest,
+            subject,
+            msg.sender,
+            block.number,
+            reason
+        );
+    }
+
+
+    /**
+     * @notice verifyCredential checks whether the credential is valid.
+     * @dev A valid credential is the one signed by all parties and that
+     * is not revoked.
+     * @param subject The subject of the credential
+     * @param digest The digest of the credential
+     */
+    function _verifyCredential(CredentialTree storage self, address subject, bytes32 digest)
+        internal
+        view
+        returns (bool)
+    {
+        require(
+            self.issued[digest].insertedBlock != 0,
+            "Issuer/credential not found"
+        );
+        require(
+            self.issued[digest].subject == subject,
+            "Issuer/not owned by subject"
+        );
+        return (_certified(self, digest) && _isRevoked(self, digest));
+    }
+
+    /**
+     * @notice verifyAllCredentials checks whether all credentials
+     * of a given subject are valid.
+     * @param subject The subject of the credential
+     */
+    // TODO: Add period verification
+    function _verifyAllCredentials(CredentialTree storage self, address subject)
+        internal
+        view
+        returns (bool)
+    {
+        // FIXME: restrict size of `digests` array
+        for (uint256 i = 0; i < self.digests[subject].length; i++) {
+            if (!_verifyCredential(self, subject, self.digests[subject][i])) {
+                return false;
+            }
+        }
+        return true;
     }
 }

@@ -4,7 +4,7 @@ pragma solidity >=0.7.0 <0.8.0;
 import "../node/Leaf.sol";
 
 contract LeafImpl is Leaf {
-    constructor(address[] memory owners, uint256 quorum)
+    constructor(address[] memory owners, uint8 quorum)
         Leaf(owners, quorum)
     {
         // solhint-disable-previous-line no-empty-blocks

@@ -1,27 +1,46 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.8.0;
 
-import "../ERC165Checker.sol";
 import "../Owners.sol";
 import "../notary/Issuer.sol";
 import "./NodeInterface.sol";
 
 abstract contract Node is NodeInterface, Owners {
-    address immutable _parent;
+
+    bool private _init = false;
 
     Role immutable _role;
 
-    Node[] internal _childrenList;
+    address immutable _parent;
+
+    address[] internal _childrenList;
     
     mapping(address => bool) internal _children;
 
     Issuer internal _issuer;
 
-    constructor(Role role, address[] memory owners, uint256 quorum)
+    event IssuerInitialized(address indexed _issuer, address indexed by);
+
+    constructor(Role role, address[] memory owners, uint8 quorum)
         Owners(owners, quorum) {
         _parent = msg.sender; // if parent is a contract, then this instance is a leaf or internal node, otherwise parent is a external account address and this instance is the highest root contract.
         _role = role;
-        _issuer = new Issuer(owners, quorum);
+    }
+
+    modifier isInitialized() {
+        require(initialized(), "Node/notarization not initialized");
+        _;
+    }
+
+    function initialized() public view returns(bool){
+        return _init;
+    }
+
+    function initialize() public onlyOwner {
+        require(!initialized(), "Node/notarization already initialized");
+        _issuer = new Issuer(owners(), quorum());
+        _init = true;
+        emit IssuerInitialized(address(_issuer), msg.sender);
     }
 
     /**
@@ -50,7 +69,7 @@ abstract contract Node is NodeInterface, Owners {
      * @param subject The subject of the credential
      * @return the aggregated root of all credentials of a subject
      */
-    function getRootProof(address subject) public view returns (bytes32) {
+    function getRootProof(address subject) public view isInitialized returns (bytes32) {
         return _issuer.getRootProof(subject);
     }
 
@@ -63,6 +82,7 @@ abstract contract Node is NodeInterface, Owners {
     function verifyCredentialRoot(address subject, bytes32 root)
         public
         view
+        isInitialized
         returns (bool) {
             return _issuer.verifyCredentialRoot(subject, root);
     }

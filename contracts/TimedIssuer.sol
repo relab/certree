@@ -17,7 +17,7 @@ contract TimedIssuer is Timed, Owners {
     */
     constructor(
         address[] memory owners,
-        uint256 quorum,
+        uint8 quorum,
         uint256 startingTime,
         uint256 endingTime
     ) Timed(startingTime, endingTime) Owners(owners, quorum) {
