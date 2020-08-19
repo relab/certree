@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.8.0;
-// pragma experimental ABIEncoderV2;
+pragma experimental ABIEncoderV2;
 
 import "../ERC165.sol";
 import "../Owners.sol";
@@ -16,12 +16,12 @@ import "./Notary.sol";
  // TODO: Allow upgradeable contract using similar approach of https://github.com/PeterBorah/ether-router
  contract Issuer is IssuerInterface, Owners, ERC165 {
     using Notary for Notary.CredentialTree;
-    Notary.CredentialTree private _tree;
+    Notary.CredentialTree _tree;
 
     //TODO: define aggregator interface
     // Aggregator aggregator;
     using CredentialSum for CredentialSum.Root;
-    mapping(address => CredentialSum.Root) private _root;
+    mapping(address => CredentialSum.Root) _root;
 
     modifier notRevoked(bytes32 digest) {
         require(
@@ -64,9 +64,78 @@ import "./Notary.sol";
 
     /**
      * @param digest The digest of the credential
-     * @return the lenght of the witnesses of an issued credential proof
+     * @return the issued credential proof
      */
-    function witnessesLength(bytes32 digest) public view returns(uint256) {
+    function getIssuedProof(bytes32 digest)
+        public
+        view
+        override
+        returns (Notary.CredentialProof memory)
+    {
+        return _tree._getIssuedProof(digest);
+    }
+
+    /**
+     * @param digest The digest of the credential
+     * @return the revoked credential proof
+     */
+    function getIRevokedProof(bytes32 digest)
+        public
+        view
+        override
+        returns (Notary.RevocationProof memory)
+    {
+        return _tree._getRevokedProof(digest);
+    }
+
+    /**
+     * @param digest The digest of the credential
+     * @return the signers of a credential proof
+     * @dev the returned array may contain zero addresses,
+     * meaning that some of the owners did not signed the
+     * credential yet.
+     */
+    function getCredentialSigners(bytes32 digest)
+        public
+        view
+        returns (address[] memory)
+    {
+        address[] memory signers = new address[](_owners.length);
+        uint index = 0;
+        uint i = 0;
+        for (; i < _owners.length; i++) {
+            if (_tree.credentialSigners[digest][_owners[i]]) {
+                signers[index] = _owners[i];
+                index++;
+            }
+        }
+        // assert(i == index); ?
+        return signers;
+    }
+
+    /**
+     * @notice verify if a credential proof was signed by a quorum
+     * @param digest The digest of the credential
+     */
+    function isQuorumSigned(bytes32 digest) public view returns(bool) {
+        return _tree._isQuorumSigned(digest, _quorum);
+    }
+
+    /**
+     * @notice returns whether a credential proof was signed
+     * by an issuer's account
+     * @param digest The digest of the credential
+     * @param account The issuer's account
+     */
+    function isSigned(bytes32 digest, address account) public view returns(bool) {
+        return _tree._isSigned(digest, account);
+    }
+
+    /**
+     * @param digest The digest of the credential
+     * @return the length of the witnesses of an issued credential proof
+     */
+    function witnessesLength(bytes32 digest) public view override returns(uint256) {
         return _tree.issued[digest].witnesses.length;
     }
 
@@ -116,7 +185,7 @@ import "./Notary.sol";
      * @notice check whether the root exists
      * @param subject The subject of the credential tree
      */
-    function hasRoot(address subject) public view returns (bool)
+    function hasRoot(address subject) public view override returns (bool)
     {
         return _root[subject].hasRoot();
     }
@@ -129,6 +198,7 @@ import "./Notary.sol";
     function verifyRootOf(address subject, bytes32[] memory digests)
         public
         view
+        override
         returns (bool)
     {
         return _root[subject].verifySelfRoot(digests);
@@ -244,7 +314,7 @@ import "./Notary.sol";
     }
 
     /**
-     * @notice register a credential proof ensuring an append-only property
+     * @notice registers a credential proof ensuring an append-only property
      * @param subject The subject of the credential
      * @param digest The digest of the credential
      * @param eRoot The resulted hash of all witnesses' roots
@@ -253,13 +323,13 @@ import "./Notary.sol";
     // TODO: check if subject isn't a contract address?
     // Use `extcodesize` can be tricky since it will also return 0 for the constructor method of a contract, but it seems that isn't a problem in this context, since it isn't being used to prevent any action.
     // TODO: improve the quorum check
-    function register(address subject, bytes32 digest, bytes32 eRoot, address[] memory witnesses)
+    function registerCredential(address subject, bytes32 digest, bytes32 eRoot, address[] memory witnesses)
         public
+        override
         onlyOwner
         notRevoked(digest)
     {
         require(!isOwner[subject], "Issuer/subject cannot be the issuer");
         _tree._issue(subject, digest, eRoot, witnesses);
-        // emit CredentialSigned(msg.sender, digest, block.number);
     }
 }

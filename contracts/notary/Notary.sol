@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.8.0;
+pragma experimental ABIEncoderV2;
 
 library Notary {
     // Logged when a credential is issued/created.
@@ -72,7 +73,31 @@ library Notary {
         mapping(bytes32 => RevocationProof) revoked;
 
         // Maps digest to owners that already signed it
-        mapping(bytes32 => mapping(address => bool)) ownersSigned;
+        mapping(bytes32 => mapping(address => bool)) credentialSigners;
+    }
+
+    /**
+     * @param digest The digest of the credential
+     * @return the issued credential proof
+     */
+    function _getIssuedProof(CredentialTree storage self, bytes32 digest)
+        internal
+        view
+        returns (CredentialProof memory)
+    {
+        return self.issued[digest];
+    }
+
+    /**
+     * @param digest The digest of the credential
+     * @return the revoked credential proof
+     */
+    function _getRevokedProof(CredentialTree storage self, bytes32 digest)
+        internal
+        view
+        returns (RevocationProof memory)
+    {
+        return self.revoked[digest];
     }
 
     /**
@@ -94,6 +119,25 @@ library Notary {
     }
 
     /**
+     * @notice verify if a credential proof was signed by a quorum
+     * @param digest The digest of the credential
+     * @param quorumSize The size of the quorum
+     */
+    function _isQuorumSigned(CredentialTree storage self, bytes32 digest, uint8 quorumSize) internal view returns (bool) {
+        return self.issued[digest].signed >= quorumSize;
+    }
+
+    /**
+     * @notice returns whether a credential proof was signed
+     * by an issuer's account
+     * @param digest The digest of the credential
+     * @param account The issuer's account
+     */
+    function _isSigned(CredentialTree storage self, bytes32 digest, address account) internal view returns (bool) {
+        return self.credentialSigners[digest][account];
+    }
+
+    /**
      * @notice verify if a credential was signed by all parties
      * @param digest The digest of the credential to be verified
      */
@@ -112,7 +156,7 @@ library Notary {
         internal
     {
         require(
-            !self.ownersSigned[digest][msg.sender],
+            !self.credentialSigners[digest][msg.sender],
             "Notary/sender already signed"
         );
         if (self.issued[digest].insertedBlock == 0) {
@@ -155,7 +199,7 @@ library Notary {
             // Register sign action
             ++self.issued[digest].signed;
         }
-        self.ownersSigned[digest][msg.sender] = true;
+        self.credentialSigners[digest][msg.sender] = true;
         emit CredentialSigned(msg.sender, digest, block.number);
     }
 

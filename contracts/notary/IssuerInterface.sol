@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.8.0;
+pragma experimental ABIEncoderV2;
+
+import "./Notary.sol";
 
 interface IssuerInterface {
     // Logged when a credential is issued/created.
@@ -34,6 +37,12 @@ interface IssuerInterface {
 
     /**
      * @param digest The digest of the credential
+     * @return the length of the witnesses of an issued credential proof
+     */
+    function witnessesLength(bytes32 digest) external view returns(uint256);
+
+    /**
+     * @param digest The digest of the credential
      * @return the witnesses of an issued credential proof
      */
     function getWitnesses(bytes32 digest) external view returns(address[] memory);
@@ -49,6 +58,40 @@ interface IssuerInterface {
      * @return the aggregated root of all credentials of a subject
      */
     function getRootProof(address subject) external view returns (bytes32);
+
+    /**
+     * @param digest The digest of the credential
+     * @return the issued credential proof
+     */
+    function getIssuedProof(bytes32 digest)
+        external
+        view
+        returns (Notary.CredentialProof memory);
+
+    /**
+     * @param digest The digest of the credential
+     * @return the revoked credential proof
+     */
+    function getIRevokedProof(bytes32 digest)
+        external
+        view
+        returns (Notary.RevocationProof memory);
+
+    /**
+     * @notice check whether the root exists
+     * @param subject The subject of the credential tree
+     */
+    function hasRoot(address subject) external view returns (bool);
+
+    /**
+     * @notice verifies the current root formation
+     * @param subject The subject of the credential
+     * @param digests The list of digests of the subject
+     */
+    function verifyRootOf(address subject, bytes32[] memory digests)
+        external
+        view
+        returns (bool);
 
     /**
      * @notice verify if a credential proof was issued
@@ -77,6 +120,15 @@ interface IssuerInterface {
     function confirmCredential(bytes32 digest) external;
 
     /**
+     * @notice registers a credential proof ensuring an append-only property
+     * @param subject The subject of the credential
+     * @param digest The digest of the credential
+     * @param eRoot The resulted hash of all witnesses' roots
+     * @param witnesses The list of all witnesses contracts
+     */
+    function registerCredential(address subject, bytes32 digest, bytes32 eRoot, address[] memory witnesses) external;
+
+    /**
      * @notice revokeCredential revokes a credential for a given reason
      * based on it's digest.
      * @param digest The digest of the credential
@@ -100,14 +152,20 @@ interface IssuerInterface {
      * @param subject The subject of the credential
      * @param digest The digest of the credential
      */
-    function verifyCredential(address subject, bytes32 digest) external view returns (bool);
+    function verifyCredential(address subject, bytes32 digest)
+        external
+        view
+        returns (bool);
 
     /**
      * @notice verifyAllCredentials checks whether all credentials
      * of a given subject are valid.
      * @param subject The subject of the credential
      */
-    function verifyAllCredentials(address subject) external view returns (bool);
+    function verifyAllCredentials(address subject)
+        external
+        view
+        returns (bool);
 
     /**
      * @notice verifyCredentialRoot checks whether the root exists
