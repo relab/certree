@@ -10,7 +10,7 @@ import "./Timed.sol";
  */
 contract TimedIssuer is Timed, Owners {
 
-    Issuer private _issuer;
+    IssuerInterface private _issuer;
 
     /**
     * @notice Constructor creates a Issuer contract
@@ -37,18 +37,18 @@ contract TimedIssuer is Timed, Owners {
         onlyOwner
         whileNotEnded
     {
-        _issuer.register(subject, digest, bytes32(0), new address[](0));
+        _issuer.registerCredential(subject, digest, bytes32(0), new address[](0));
     }
 
     /**
      * @notice generate the root for a given subject
      */
-    function aggregateCredentials(address subject)
+    function aggregateCredentials(address subject, bytes32[] memory digests)
         public
         onlyOwner
         returns (bytes32)
     {
         require(hasEnded(), "TimedIssuer/period not ended yet");
-        return _issuer.aggregateCredentials(subject);
+        return _issuer.aggregateCredentials(subject, digests);
     }
 }

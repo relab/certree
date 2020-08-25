@@ -7,7 +7,7 @@ import "./NodeInterface.sol";
 
 abstract contract Node is NodeInterface, Owners {
 
-    bool private _init = false;
+    bool internal _init = false;
 
     Role immutable _role;
 
@@ -17,12 +17,12 @@ abstract contract Node is NodeInterface, Owners {
     
     mapping(address => bool) internal _children;
 
-    Issuer internal _issuer;
+    IssuerInterface internal _issuer;
 
     event IssuerInitialized(address indexed _issuer, address indexed by);
 
-    constructor(Role role, address[] memory owners, uint8 quorum)
-        Owners(owners, quorum) {
+    constructor(Role role, address[] memory registrars, uint8 quorum)
+        Owners(registrars, quorum) {
         _parent = msg.sender; // if parent is a contract, then this instance is a leaf or internal node, otherwise parent is a external account address and this instance is the highest root contract.
         _role = role;
     }
@@ -36,11 +36,18 @@ abstract contract Node is NodeInterface, Owners {
         return _init;
     }
 
-    function initialize() public onlyOwner {
+    function initializeIssuer() public virtual override onlyOwner {
         require(!initialized(), "Node/notarization already initialized");
-        _issuer = new Issuer(owners(), quorum());
+        _issuer = new Issuer(_owners, _quorum);
         _init = true;
         emit IssuerInitialized(address(_issuer), msg.sender);
+    }
+
+    /**
+     * @return the registered issuer contract
+     */
+    function issuer() public view override isInitialized returns(address) {
+        return address(_issuer);
     }
 
     /**
@@ -71,6 +78,19 @@ abstract contract Node is NodeInterface, Owners {
      */
     function getRootProof(address subject) public view isInitialized returns (bytes32) {
         return _issuer.getRootProof(subject);
+    }
+
+    /**
+     * @notice register a new credential without witnesses
+     * @param subject The subject of the credential
+     * @param digest The digest of the credential that is being created
+     */
+    function registerCredential(address subject, bytes32 digest)
+        public
+        onlyOwner
+        isInitialized
+    {
+        _issuer.registerCredential(subject, digest, bytes32(0), new address[](0));
     }
 
     /**

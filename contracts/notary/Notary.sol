@@ -7,7 +7,7 @@ library Notary {
     event CredentialIssued(
         bytes32 indexed digest,
         address indexed subject,
-        address indexed issuer,
+        address indexed registrar,
         uint256 insertedBlock
     );
 
@@ -29,7 +29,7 @@ library Notary {
 
     /**
      * @notice CredentialProof represents an on-chain proof that a
-     * verifiable credential was created and signed by an issuer.
+     * verifiable credential was created and signed by a registrar.
      * @dev it is a node of the credential tree of a subject.
      */
     struct CredentialProof {
@@ -39,7 +39,7 @@ library Notary {
         uint256 nonce; // Increment-only counter of credentials of the same subject
         bytes32 digest; // The digest of the credential stored (e.g. Swarm/IPFS hash)
         bool approved; // Whether the subject approved the credential
-        address issuer; // The issuer address of this proof
+        address registrar; // The registrar address
         address subject; // The entity address refered by a proof
         address[] witnesses; // if witnesses is empty is a leaf notary, otherwise is a list of inner notaries
         bytes32 evidencesRoot; // if is a leaf root is zero otherwise is the result of the aggregation of the digests at the witnesses
@@ -47,10 +47,10 @@ library Notary {
 
     /**
      * @notice RevocationProof represents an on-chain proof that a
-     * verifiable credential was revoked by an issuer.
+     * verifiable credential was revoked by a registrar.
      */
     struct RevocationProof {
-        address issuer;
+        address registrar;
         address subject;
         uint256 revokedBlock; // The block number of the revocation (0 if not revoked)
         bytes32 reason; // digest of the reason of the revocation
@@ -60,17 +60,26 @@ library Notary {
      * @notice define the credential tree structure
      */
     struct CredentialTree {
-        // Incremental-only counter for issued credentials per subject
+        // Incremental-only counter for registered credentials per subject
         mapping(address => uint256) nonce;
 
-        // Maps credential digests by subjects
-        mapping(address => bytes32[]) digests;
+        // Maps the last issued digests by subjects
+        // May be not valid yet
+        mapping(address => bytes32) previous;
 
-        // Maps issued credential proof by document digest
-        mapping(bytes32 => CredentialProof) issued;
+        // Maps issued credential proofs by subjects
+        // The size of issued[subject] is the number of
+        // issued credentials, and can contain revoked.
+        mapping(address => bytes32[]) issued;
+
+        // Maps registered credentials proof by the document digest
+        mapping(bytes32 => CredentialProof) records;
 
         // Maps document digest to revoked proof
         mapping(bytes32 => RevocationProof) revoked;
+
+        // Count the number of revoked credentials per subject
+        mapping(address => uint) revokedCounter;
 
         // Maps digest to owners that already signed it
         mapping(bytes32 => mapping(address => bool)) credentialSigners;
@@ -80,12 +89,12 @@ library Notary {
      * @param digest The digest of the credential
      * @return the issued credential proof
      */
-    function _getIssuedProof(CredentialTree storage self, bytes32 digest)
+    function _getCredentialProof(CredentialTree storage self, bytes32 digest)
         internal
         view
         returns (CredentialProof memory)
     {
-        return self.issued[digest];
+        return self.records[digest];
     }
 
     /**
@@ -101,12 +110,12 @@ library Notary {
     }
 
     /**
-     * @notice verify if a credential proof was issued
+     * @notice verify if a credential proof exists for a given digest
      * @param digest The digest of the credential
      * @return true if an emission proof exists, false otherwise.
      */
-    function _isIssued(CredentialTree storage self, bytes32 digest) internal view returns (bool) {
-        return self.issued[digest].digest != bytes32(0);
+    function _recordExists(CredentialTree storage self, bytes32 digest) internal view returns (bool) {
+        return self.records[digest].digest != bytes32(0);
     }
 
     /**
@@ -124,14 +133,14 @@ library Notary {
      * @param quorumSize The size of the quorum
      */
     function _isQuorumSigned(CredentialTree storage self, bytes32 digest, uint8 quorumSize) internal view returns (bool) {
-        return self.issued[digest].signed >= quorumSize;
+        return self.records[digest].signed >= quorumSize;
     }
 
     /**
      * @notice returns whether a credential proof was signed
-     * by an issuer's account
+     * by a registrar's account
      * @param digest The digest of the credential
-     * @param account The issuer's account
+     * @param account The registrar's account
      */
     function _isSigned(CredentialTree storage self, bytes32 digest, address account) internal view returns (bool) {
         return self.credentialSigners[digest][account];
@@ -141,8 +150,8 @@ library Notary {
      * @notice verify if a credential was signed by all parties
      * @param digest The digest of the credential to be verified
      */
-    function _certified(CredentialTree storage self, bytes32 digest) internal view returns (bool) {
-        return self.issued[digest].approved;
+    function _isApproved(CredentialTree storage self, bytes32 digest) internal view returns (bool) {
+        return self.records[digest].approved;
     }
 
     /**
@@ -159,28 +168,22 @@ library Notary {
             !self.credentialSigners[digest][msg.sender],
             "Notary/sender already signed"
         );
-        if (self.issued[digest].insertedBlock == 0) {
+        if (self.records[digest].insertedBlock == 0) {
             // Creation
-            uint256 lastNonce;
-            if (self.nonce[subject] == 0) {
-                lastNonce = self.nonce[subject];
-            } else {
-                assert(self.nonce[subject] > 0);
-                lastNonce = self.nonce[subject] - 1;
-                assert(self.digests[subject].length > 0);
-                bytes32 previousDigest = self.digests[subject][lastNonce];
-                CredentialProof memory c = self.issued[previousDigest];
+            if (self.previous[subject] != bytes32(0)) {
+                assert(self.records[self.previous[subject]].insertedBlock != 0);
+                CredentialProof memory c = self.records[self.previous[subject]];
                 // Ensure that a previous certificate happens before the new one.
                 // solhint-disable-next-line expression-indent
                 require(c.insertedBlock < block.number, "Notary/block number violation");
                 // solhint-disable-next-line not-rely-on-time, expression-indent
                 require(c.blockTimestamp < block.timestamp, "Notary/timestamp violation");
             }
-            self.issued[digest] = CredentialProof(
+            self.records[digest] = CredentialProof(
                 1,
                 block.number,
                 block.timestamp, // solhint-disable-line not-rely-on-time
-                self.nonce[subject],
+                ++self.nonce[subject],
                 digest,
                 false,
                 msg.sender,
@@ -188,16 +191,15 @@ library Notary {
                 witnesses,
                 eRoot
             );
-            ++self.nonce[subject];
-            self.digests[subject].push(digest); // append subject's credential hash
+            self.previous[subject] = digest;
             emit CredentialIssued(digest, subject, msg.sender, block.number);
         } else {
             require(
-                self.issued[digest].subject == subject,
-                "Notary/credential already issued"
+                self.records[digest].subject == subject,
+                "Notary/already registered"
             );
             // Register sign action
-            ++self.issued[digest].signed;
+            ++self.records[digest].signed;
         }
         self.credentialSigners[digest][msg.sender] = true;
         emit CredentialSigned(msg.sender, digest, block.number);
@@ -209,20 +211,24 @@ library Notary {
      * @dev must be called by the subject of the credential
      */
     function _approve(CredentialTree storage self, bytes32 digest, uint quorum) internal returns (bool) {
+        address subject = self.records[digest].subject;
         require(
-            self.issued[digest].subject == msg.sender,
+            subject == msg.sender,
             "Notary/wrong subject"
         );
         require(
-            !self.issued[digest].approved,
+            !self.records[digest].approved,
             "Notary/credential already signed"
         );
         require(
-            self.issued[digest].signed >= quorum,
+            self.records[digest].signed >= quorum,
             "Notary/no quorum of signatures"
         );
-        self.issued[digest].approved = true;
-        // EMIT events here or in the implementer?
+        // Mark the record as approved
+        self.records[digest].approved = true;
+        // Add the record to the issued list
+        self.issued[subject].push(digest);
+        // FIXME: emit events here or in the contract?
         emit CredentialSigned(msg.sender, digest, block.number);
         return true;
     }
@@ -234,15 +240,16 @@ library Notary {
      * @param reason The hash of the reason of the revocation
      * @dev The reason should be publicaly available for anyone to inspect
      * (i.e. Stored in a public swarm/ipfs address). The function can be 
-     * called either by the issuer or by the subject of the credential.
+     * called either by the registrar or by the subject of the credential.
      */
     function _revoke(CredentialTree storage self, bytes32 digest, bytes32 reason) internal {
         require(
-            self.issued[digest].insertedBlock != 0,
+            self.records[digest].insertedBlock != 0,
             "Notary/credential not found"
         );
-        address subject = self.issued[digest].subject;
+        address subject = self.records[digest].subject;
         assert(subject != address(0));
+        ++self.revokedCounter[subject];
         self.revoked[digest] = RevocationProof(
             msg.sender, // who is this sender?
             subject,
@@ -250,7 +257,17 @@ library Notary {
             reason
         );
         // TODO: analyse the consequence of deleting the proof.
-        // delete self.issued[digest];
+        // delete self.records[digest];
+        // FIXME: If revoked credentials are kept in the `issued`
+        // array and the verification checks whether the credential
+        // was revoked, when verifying all credentails to aggregate,
+        // if there is at least one credential revoked, 
+        // the verification will always fail, and consequently the aggregation.
+        // As the digests order is important for the aggregation,
+        // the array cannot be efficiently updated by moving the 
+        // last element into deleted indexes.
+        // An alternative approach for ignore revoked digests 
+        // in the verification and aggregation may be necessary.
         emit CredentialRevoked(
             digest,
             subject,
@@ -260,10 +277,9 @@ library Notary {
         );
     }
 
-
     /**
      * @notice verifyCredential checks whether the credential is valid.
-     * @dev A valid credential is the one signed by all parties and that
+     * @dev A valid credential is the one signed by all parties and that 
      * is not revoked.
      * @param subject The subject of the credential
      * @param digest The digest of the credential
@@ -274,33 +290,47 @@ library Notary {
         returns (bool)
     {
         require(
-            self.issued[digest].insertedBlock != 0,
+            self.records[digest].insertedBlock != 0,
             "Issuer/credential not found"
         );
         require(
-            self.issued[digest].subject == subject,
+            self.records[digest].subject == subject,
             "Issuer/not owned by subject"
         );
-        return (_certified(self, digest) && _isRevoked(self, digest));
+        return _isApproved(self, digest) && !_isRevoked(self, digest);
     }
 
     /**
-     * @notice verifyAllCredentials checks whether all credentials
-     * of a given subject are valid.
+     * @notice _verifyProofs checks whether a list of given proofs are valid
      * @param subject The subject of the credential
+     * @param digests The list of digests of the proofs
      */
-    // TODO: Add period verification
-    function _verifyAllCredentials(CredentialTree storage self, address subject)
+    function _verifyProofs(CredentialTree storage self, address subject, bytes32[] memory digests)
         internal
         view
         returns (bool)
     {
         // FIXME: restrict size of `digests` array
-        for (uint256 i = 0; i < self.digests[subject].length; i++) {
-            if (!_verifyCredential(self, subject, self.digests[subject][i])) {
+        for (uint256 i = 0; i < digests.length; i++) {
+            if (!_verifyCredential(self, subject, digests[i])) {
                 return false;
             }
         }
         return true;
+    }
+
+    /**
+     * @notice _verifyIssuedCredentials checks whether all issued credentials
+     * of a given subject are valid.
+     * @param subject The subject of the credential
+     */
+    // TODO: Add period verification
+    function _verifyIssuedCredentials(CredentialTree storage self, address subject)
+        internal
+        view
+        returns (bool)
+    {
+        // TODO: filter revoked? Return a list of revoked digests?
+        return _verifyProofs(self, subject, self.issued[subject]);
     }
 }

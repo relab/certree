@@ -5,25 +5,9 @@ import "./Node.sol";
 
 contract Leaf is Node {
 
-    constructor(address[] memory owners, uint8 quorum)
-        Node(Role.Leaf, owners, quorum)
+    constructor(address[] memory registrars, uint8 quorum)
+        Node(Role.Leaf, registrars, quorum)
     {
         // solhint-disable-previous-line no-empty-blocks
-    }
-
-    /**
-     * @notice register a new credential without witnesses
-     * @param subject The subject of the credential
-     * @param digest The digest of the credential that is being created
-     */
-    function registerCredential(address subject, bytes32 digest)
-        public
-        onlyOwner
-        isInitialized
-    {
-        // TODO: verify the cost of using the following variables instead
-        // bytes32 zero;
-        // address[] memory none;
-        _issuer.register(subject, digest, bytes32(0), new address[](0));
     }
 }

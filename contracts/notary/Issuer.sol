@@ -26,21 +26,21 @@ import "./Notary.sol";
     modifier notRevoked(bytes32 digest) {
         require(
             !isRevoked(digest),
-            "Issuer/already revoked"
+            "Issuer/credential revoked"
         );
         _;
     }
 
-    modifier existsCredentials(address subject) {
+    modifier hasIssuedCredentials(address subject) {
         require(
-            _tree.digests[subject].length > 0,
-            "Issuer/there are no credentials"
+            _tree.issued[subject].length > 0,
+            "Issuer/there are no issued credentials"
         );
         _;
     }
 
-    constructor(address[] memory owners, uint8 quorum)
-        Owners(owners, quorum)
+    constructor(address[] memory registrars, uint8 quorum)
+        Owners(registrars, quorum)
     {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -51,7 +51,7 @@ import "./Notary.sol";
 
     /**
      * @param subject The subject of the credential
-     * @return the list of the registered digests of a subject
+     * @return the list of the issued credentials' digests of a subject
      */
     function getDigests(address subject)
         public
@@ -59,27 +59,27 @@ import "./Notary.sol";
         override
         returns (bytes32[] memory)
     {
-        return _tree.digests[subject];
+        return _tree.issued[subject];
     }
 
     /**
      * @param digest The digest of the credential
-     * @return the issued credential proof
+     * @return the registered credential proof
      */
-    function getIssuedProof(bytes32 digest)
+    function getCredentialProof(bytes32 digest)
         public
         view
         override
         returns (Notary.CredentialProof memory)
     {
-        return _tree._getIssuedProof(digest);
+        return _tree._getCredentialProof(digest);
     }
 
     /**
      * @param digest The digest of the credential
      * @return the revoked credential proof
      */
-    function getIRevokedProof(bytes32 digest)
+    function getRevokedProof(bytes32 digest)
         public
         view
         override
@@ -109,7 +109,6 @@ import "./Notary.sol";
                 index++;
             }
         }
-        // assert(i == index); ?
         return signers;
     }
 
@@ -123,9 +122,9 @@ import "./Notary.sol";
 
     /**
      * @notice returns whether a credential proof was signed
-     * by an issuer's account
+     * by a registrar's account
      * @param digest The digest of the credential
-     * @param account The issuer's account
+     * @param account The registrar's account
      */
     function isSigned(bytes32 digest, address account) public view returns(bool) {
         return _tree._isSigned(digest, account);
@@ -136,7 +135,7 @@ import "./Notary.sol";
      * @return the length of the witnesses of an issued credential proof
      */
     function witnessesLength(bytes32 digest) public view override returns(uint256) {
-        return _tree.issued[digest].witnesses.length;
+        return _tree.records[digest].witnesses.length;
     }
 
     /**
@@ -144,7 +143,7 @@ import "./Notary.sol";
      * @return the witnesses of an issued credential proof
      */
     function getWitnesses(bytes32 digest) public view override returns(address[] memory){
-        return _tree.issued[digest].witnesses;
+        return _tree.records[digest].witnesses;
     }
 
     /**
@@ -152,7 +151,7 @@ import "./Notary.sol";
      * @return the root of the evidences of an issued credential proof.
      */
     function getEvidenceRoot(bytes32 digest) public view override returns (bytes32) {
-        return _tree.issued[digest].evidencesRoot;
+        return _tree.records[digest].evidencesRoot;
     }
     
     /**
@@ -164,12 +163,22 @@ import "./Notary.sol";
     }
 
     /**
-     * @notice verify if a credential proof was issued
-     * @param digest The digest of the credential
-     * @return true if an emission proof exists, false otherwise.
+     * @param subject The subject of the credential
+     * @return the root proof of a subject in this contract
      */
-    function isIssued(bytes32 digest) public view override returns (bool) {
-        return _tree._isIssued(digest);
+     // TODO: Implement it as a token?
+     // TODO: Return an aggregator interface
+    function getProof(address subject) public view returns (CredentialSum.Root memory) {
+        return _root[subject];
+    }
+
+    /**
+     * @notice verify if a credential proof was created
+     * @param digest The digest of the credential
+     * @return true if an credential proof exists, false otherwise.
+     */
+    function recordExists(bytes32 digest) public view override returns (bool) {
+        return _tree._recordExists(digest);
     }
 
     /**
@@ -191,10 +200,11 @@ import "./Notary.sol";
     }
 
     /**
-     * @notice verifies the current root formation
+     * @notice perform an on-chain verification the current root formation
      * @param subject The subject of the credential
      * @param digests The list of digests of the subject
      */
+    // TODO: limit the size of digests to avoid out-of-gas
     function verifyRootOf(address subject, bytes32[] memory digests)
         public
         view
@@ -217,8 +227,8 @@ import "./Notary.sol";
      * @notice verify if a credential was signed by all parties
      * @param digest The digest of the credential to be verified
      */
-    function certified(bytes32 digest) public view override returns (bool) {
-        return _tree._certified(digest);
+    function isApproved(bytes32 digest) public view override returns (bool) {
+        return _tree._isApproved(digest);
     }
 
     /**
@@ -229,13 +239,13 @@ import "./Notary.sol";
      * @dev The reason should be publicaly available for anyone to inspect
      * i.e. Stored in a public swarm/ipfs address
      */
-    // TODO: quorum approval for revocation?
+     // TODO: require quorum
     function revokeCredential(bytes32 digest, bytes32 reason)
         public
         override
         notRevoked(digest)
     {
-        address subject = _tree.issued[digest].subject;
+        address subject = _tree.records[digest].subject;
         require(isOwner[msg.sender] || subject == msg.sender, "Issuer/sender not authorized");
         _tree._revoke(digest, reason);
     }
@@ -244,21 +254,23 @@ import "./Notary.sol";
      * @notice aggregateCredentials aggregates the digests of a given
      * subject.
      * @param subject The subject of which the credentials will be aggregate
+     * @param digests The list of credentials' digests
      */
-    function aggregateCredentials(address subject)
+    function aggregateCredentials(address subject, bytes32[] memory digests)
         public
         virtual
         override
         onlyOwner
+        hasIssuedCredentials(subject)
         returns (bytes32)
     {
-        // TODO: Alternativaly, consider to hash the credential proofs instead of only the digests, i.e.: sha256(abi.encode(issuedCredentials[digests[i]]));
+        // TODO: Alternatively, consider to hash the credential proofs instead of only the digests, i.e.: sha256(abi.encode(issuedCredentials[issued[i]]));
         // FIXME: the number of digests should be bounded to avoid gas limit on loops
         require(
-            verifyAllCredentials(subject),
+            _tree._verifyProofs(subject, digests),
             "Issuer/there are unsigned credentials"
         );
-        return _root[subject].generateRoot(subject, _tree.digests[subject]);
+        return _root[subject].generateRoot(subject, digests);
     }
 
     /**
@@ -271,30 +283,32 @@ import "./Notary.sol";
         public
         view
         override
-        existsCredentials(subject)
+        hasIssuedCredentials(subject)
         returns (bool)
     {
         require(_root[subject].hasRoot(), "Issuer/root not found");
         // Stored root must be derived from current digests of the subject
-        assert(_root[subject].verifySelfRoot(_tree.digests[subject]));
-        bytes32 proof = _root[subject].proof;
-        return proof == root;
+        assert(_root[subject].verifySelfRoot(_tree.issued[subject]));
+        return _root[subject].proof == root;
     }
 
     /**
-     * @notice verifyAllCredentials checks whether all credentials
+     * @notice verifyIssuedCredentials checks whether all credentials
      * of a given subject are valid.
      * @param subject The subject of the credential
+     * @dev This function checks over all issued credentials if there is
+     * any credentials there was not approved, but it ignores any 
+     * revoked credential.
      */
     // TODO: Add period verification
-    function verifyAllCredentials(address subject)
+    function verifyIssuedCredentials(address subject)
         public
         view
         override
-        existsCredentials(subject)
+        hasIssuedCredentials(subject)
         returns (bool)
     {
-        return _tree._verifyAllCredentials(subject);
+        return _tree._verifyIssuedCredentials(subject);
     }
 
     /**
@@ -313,6 +327,24 @@ import "./Notary.sol";
         return _tree._verifyCredential(subject, digest);
     }
 
+    // Returns a list of revoked credentials
+    function getRevoked(address subject)
+        public
+        view
+        returns (address[] memory)
+    {
+        address[] memory revoked = new address[](_tree.revokedCounter[subject]);
+        uint index = 0;
+        uint i = 0;
+        for (; i < _tree.issued[subject].length; i++) {
+            if (isRevoked(_tree.issued[subject][i])) {
+                revoked[index] = _owners[i];
+                index++;
+            }
+        }
+        return revoked;
+    }
+
     /**
      * @notice registers a credential proof ensuring an append-only property
      * @param subject The subject of the credential
@@ -329,7 +361,7 @@ import "./Notary.sol";
         onlyOwner
         notRevoked(digest)
     {
-        require(!isOwner[subject], "Issuer/subject cannot be the issuer");
+        require(!isOwner[subject], "Issuer/subject cannot be the registrar");
         _tree._issue(subject, digest, eRoot, witnesses);
     }
 }

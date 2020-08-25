@@ -9,7 +9,7 @@ interface IssuerInterface {
     event CredentialIssued(
         bytes32 indexed digest,
         address indexed subject,
-        address indexed issuer,
+        address indexed registrar,
         uint256 insertedBlock
     );
 
@@ -63,7 +63,7 @@ interface IssuerInterface {
      * @param digest The digest of the credential
      * @return the issued credential proof
      */
-    function getIssuedProof(bytes32 digest)
+    function getCredentialProof(bytes32 digest)
         external
         view
         returns (Notary.CredentialProof memory);
@@ -72,7 +72,7 @@ interface IssuerInterface {
      * @param digest The digest of the credential
      * @return the revoked credential proof
      */
-    function getIRevokedProof(bytes32 digest)
+    function getRevokedProof(bytes32 digest)
         external
         view
         returns (Notary.RevocationProof memory);
@@ -98,7 +98,7 @@ interface IssuerInterface {
      * @param digest The digest of the credential
      * @return true if an emission proof exists, false otherwise.
      */
-    function isIssued(bytes32 digest) external view returns (bool);
+    function recordExists(bytes32 digest) external view returns (bool);
 
     /**
      * @notice verify if a credential proof was revoked
@@ -111,7 +111,7 @@ interface IssuerInterface {
      * @notice verify if a credential was signed by all parties
      * @param digest The digest of the credential to be verified
      */
-    function certified(bytes32 digest) external view returns (bool);
+    function isApproved(bytes32 digest) external view returns (bool);
 
     /**
      * @notice confirms the emission of a quorum signed credential proof
@@ -142,8 +142,9 @@ interface IssuerInterface {
      * @notice aggregateCredentials aggregates the digests of a given
      * subject.
      * @param subject The subject of which the credentials will be aggregate
+     * @param digests The list of credentials' digests
      */
-    function aggregateCredentials(address subject) external returns (bytes32);
+    function aggregateCredentials(address subject, bytes32[] memory digests) external returns (bytes32);
 
     /**
      * @notice verifyCredential checks whether the credential is valid.
@@ -158,11 +159,11 @@ interface IssuerInterface {
         returns (bool);
 
     /**
-     * @notice verifyAllCredentials checks whether all credentials
+     * @notice verifyIssuedCredentials checks whether all credentials
      * of a given subject are valid.
      * @param subject The subject of the credential
      */
-    function verifyAllCredentials(address subject)
+    function verifyIssuedCredentials(address subject)
         external
         view
         returns (bool);

@@ -47,19 +47,7 @@ contract Inner is Node {
         // FIXME: Not allow reuse of witness at same contract? keep a map of witnesses?
         // FIXME: consider use sha256(abi.encodePacked(roots, digests));
         bytes32 evidencesRoot = CredentialSum.computeRoot(witenessProofs);
-        _issuer.register(subject, digest, evidencesRoot, witnesses);
-    }
-    
-    /**
-     * @notice register a new credential without witnesses
-     * @param subject The subject of the credential
-     * @param digest The digest of the credential that is being created
-     */
-    function registerCredential(address subject, bytes32 digest)
-        public
-        onlyOwner
-    {
-        _issuer.register(subject, digest, bytes32(0), new address[](0));
+        _issuer.registerCredential(subject, digest, evidencesRoot, witnesses);
     }
 
     /**
@@ -69,7 +57,7 @@ contract Inner is Node {
      * sub-trees were correctly built.
      * @param subject The subject of the credential tree
      */
-    function verifyCredentialTree(address subject) public view returns(bool) {
+    function verifyCredentialTree(address subject) public view isInitialized returns(bool) {
         bytes32[] memory digests = _issuer.getDigests(subject);
         assert(digests.length > 0);
         // Verify local root if exists
@@ -80,10 +68,10 @@ contract Inner is Node {
         }
         // Verify credential and potential subtrees
         for (uint256 i = 0; i < digests.length; i++) {
-            // FIXME: Solidity does not support this feature yet:
+            // FIXME: use "ABIEncoderV2"
             // UnimplementedFeatureError: Encoding type "struct Notary.CredentialProof memory" not yet implemented.
-            // Notary.CredentialProof memory c = issued(digests[i]);
-            assert(_issuer.isIssued(digests[i]));
+            // Notary.CredentialProof memory c = _issuer.getCredentialProof(digests[i]);
+            assert(_issuer.recordExists(digests[i]));
             if (!_issuer.verifyCredential(subject, digests[i])) {
                 return false;
             }
@@ -94,6 +82,45 @@ contract Inner is Node {
             }
         }
         return true;
+    }
+
+    /**
+     * @notice create a new node on the certification tree
+     * @dev The new node can be a Leaf or a Inner node.
+     * @param node The address of the node
+     * @param role The role of the node (i.e. Leaf or Inner)
+     */
+    function addChild(
+        address node,
+        Role role
+    ) public onlyOwner isInitialized returns (address) {// TODO: require a quorum of registrars
+        require(_role == Role.Inner, "NodeFactory/Node must be Inner");
+        address[] memory registrars; //FIXME: require initialization
+        uint8 quorum;
+        if (role == Role.Leaf) {
+            bool isLeafLike = ERC165Checker.supportsInterface(node, type(LeafInterface).interfaceId);
+            assert(isLeafLike);
+            Leaf leaf = Leaf(node);
+            assert(leaf.getRole() == Role.Leaf);
+            registrars = leaf.owners();
+            quorum = leaf.quorum();
+        } else {
+            bool isInnerLike = ERC165Checker.supportsInterface(node, type(InnerInterface).interfaceId);
+            assert(isInnerLike);
+            Inner inner = Inner(node);
+            assert(inner.getRole() == Role.Inner);
+            registrars = inner.owners();
+            quorum = inner.quorum();
+        }
+        //TODO: Assert that owners are different
+        _addNode(node);
+        emit NodeAdded(
+            msg.sender,
+            node,
+            registrars,
+            quorum,
+            role
+        );
     }
 
     /**
@@ -113,11 +140,12 @@ contract Inner is Node {
     function _addNode(address nodeAddress) internal onlyOwner isInitialized {
         require(address(this) != nodeAddress, "Inner/cannot add itself");
         require(!_children[nodeAddress], "Inner/node already added");
-        require(_role == Role.Inner, "Inner/Leaves cannot have children");
 
-        bool isIssuer = ERC165Checker.supportsInterface(nodeAddress, type(IssuerInterface).interfaceId);
-        bool isNode = ERC165Checker.supportsInterface(nodeAddress, type(NodeInterface).interfaceId);
-        assert(isIssuer && isNode);
+        bool isNodeLike = ERC165Checker.supportsInterface(nodeAddress, type(NodeInterface).interfaceId);
+        assert(isNodeLike);
+        Node node = Node(nodeAddress);
+        bool isIssuerLike = ERC165Checker.supportsInterface(node.issuer(), type(IssuerInterface).interfaceId);
+        assert(isIssuerLike);
 
         _children[nodeAddress] =  true;
         _childrenList.push(nodeAddress);
@@ -135,22 +163,27 @@ contract Inner is Node {
      * @param witnesses is an array with the address of all authorized
      * issuers that stores the subject sub-credentials
      */
-    function _verifyCredentialNode(address subject, bytes32 croot, address[] memory witnesses) internal view returns(bool) {
+    function _verifyCredentialNode(address subject, bytes32 croot, address[] memory witnesses) internal view isInitialized returns(bool) {
         require(croot != bytes32(0), "Inner/root cannot be null");
         bytes32[] memory proofs = new bytes32[](witnesses.length);
         for (uint256 i = 0; i < witnesses.length; i++) {
             address witnessesAddress = address(witnesses[i]);
             require(_children[witnessesAddress], "Inner/address not authorized");
             Node node = Node(witnessesAddress);
-            // TODO: certify that the methods exists on the witnesses contracts before call them (i.e. check interface implementation)
+            bool isNodeLike = ERC165Checker.supportsInterface(address(node), type(NodeInterface).interfaceId);
+            assert(isNodeLike);
             if (node.isLeaf()) {
                 Leaf leaf = Leaf(witnessesAddress);
+                bool isLeafLike = ERC165Checker.supportsInterface(address(leaf), type(LeafInterface).interfaceId);
+                assert(isLeafLike);
                 proofs[i] = leaf.getRootProof(subject);
                 if (!leaf.verifyCredentialRoot(subject, proofs[i])) {
                     return false;
                 }
             } else {// witness is a node, check sub-tree
                 Inner inner = Inner(witnessesAddress);
+                bool isInnerLike = ERC165Checker.supportsInterface(address(inner), type(InnerInterface).interfaceId);
+                assert(isInnerLike);
                 if (!inner.verifyCredentialTree(subject)) {
                     return false;
                 }

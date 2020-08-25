@@ -13,9 +13,9 @@ library CredentialSum {
 
     // Logged when a credential is aggregated.
     event AggregatedRoot(
+        bytes32 indexed proof,
         address indexed aggregator,
         address indexed subject,
-        bytes32 indexed proof,
         uint256 aggregatedBlock
     );
 
@@ -59,7 +59,7 @@ library CredentialSum {
         // solhint-disable-next-line not-rely-on-time, expression-indent
         self.blockTimestamp = block.timestamp;
         // TODO: sender should be issuer not contract
-        emit AggregatedRoot(msg.sender, subject, root, block.number);
+        emit AggregatedRoot(root, msg.sender, subject, block.number);
         return root;
     }
 
