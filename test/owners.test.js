@@ -3,7 +3,7 @@ const { expect } = require('chai');
 
 const Owners = artifacts.require('Owners');
 
-contract('Owners', accounts => {
+contract.only('Owners', accounts => {
     const [owner1, owner2, owner3] = accounts;
     let contract = null;
 
@@ -16,15 +16,15 @@ contract('Owners', accounts => {
         });
 
         it('should require a non-empty array of owners', async () => {
-            await expectRevert(Owners.new([], 0), 'Owners: not enough owners');
+            await expectRevert(Owners.new([], 0), 'Owners/not enough owners');
         });
 
         it('should require a quorum value greater than 0', async () => {
-            await expectRevert(Owners.new([owner1], 0), 'Owners: quorum out of range');
+            await expectRevert(Owners.new([owner1], 0), 'Owners/quorum out of range');
         });
 
         it('should require a quorum value less than the amount of owners', async () => {
-            await expectRevert(Owners.new([owner1, owner2], 3), 'Owners: quorum out of range');
+            await expectRevert(Owners.new([owner1, owner2], 3), 'Owners/quorum out of range');
         });
 
         it('should not allow duplicated owners addresses', async () => {
@@ -56,11 +56,11 @@ contract('Owners', accounts => {
         });
 
         it('should revert if the newOwner is already an owner', async () => {
-            await expectRevert(contract.changeOwner(owner2, { from: owner1 }), "Owners: invalid address given");
+            await expectRevert(contract.changeOwner(owner2, { from: owner1 }), "Owners/invalid address given");
         });
 
         it('should revert if the given address is invalid', async () => {
-            await expectRevert(contract.changeOwner(constants.ZERO_ADDRESS, { from: owner1 }), "Owners: invalid address given");
+            await expectRevert(contract.changeOwner(constants.ZERO_ADDRESS, { from: owner1 }), "Owners/invalid address given");
         });
 
         it('should emit an event when changing owner', async () => {
