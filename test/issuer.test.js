@@ -4,7 +4,7 @@ const { hash, hashByteArray } = require('./helpers/test-helpers');
 
 const Issuer = artifacts.require('IssuerMock');
 
-contract.only('Issuer', accounts => {
+contract('Issuer', accounts => {
     const [registrar1, registrar2, registrar3, subject1, subject2, verifier] = accounts;
     let issuer = null;
     const reason = hash(web3.utils.toHex('revoked'));

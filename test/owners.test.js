@@ -3,7 +3,7 @@ const { expect } = require('chai');
 
 const Owners = artifacts.require('Owners');
 
-contract.only('Owners', accounts => {
+contract('Owners', accounts => {
     const [owner1, owner2, owner3] = accounts;
     let contract = null;
 

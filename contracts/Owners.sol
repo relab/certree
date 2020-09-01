@@ -7,13 +7,16 @@ pragma solidity >=0.7.0 <0.8.0;
 contract Owners {
 
     // The required number of owners to authorize actions
-    uint8 private _quorum;
+    uint8 internal _quorum;
+
+    // Count the total number of owners
+    uint8 internal _ownersCount;
 
     // Max number of owners
     uint8 private constant MAX_OWNERS = (2**8) - 1;
 
     // List of owners
-    address[] private _owners;
+    address[] internal _owners;
 
     // Map of owners
     mapping(address => bool) public isOwner;
@@ -46,6 +49,7 @@ contract Owners {
             isOwner[ownersList[i]] = true;
         }
         _owners = ownersList;
+        _ownersCount = uint8(ownersList.length);
         _quorum = quorumSize;
     }
 
@@ -69,6 +73,17 @@ contract Owners {
         returns (uint8)
     {
         return _quorum;
+    }
+
+    /**
+     * @return the total number of owners
+     */
+    function ownersCount()
+        public
+        view
+        returns (uint8)
+    {
+        return _ownersCount;
     }
 
     /**
@@ -98,4 +113,6 @@ contract Owners {
         isOwner[newOwner] = true;
         isOwner[msg.sender] = false;
     }
+
+    // TODO: add and remove owners
 }

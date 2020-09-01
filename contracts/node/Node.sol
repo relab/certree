@@ -46,7 +46,7 @@ abstract contract Node is NodeInterface, Owners {
     /**
      * @return the registered issuer contract
      */
-    function issuer() public view override isInitialized returns(address) {
+    function issuer() public view override returns(address) {
         return address(_issuer);
     }
 
