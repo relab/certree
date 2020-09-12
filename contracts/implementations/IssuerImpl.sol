@@ -5,7 +5,6 @@ import "../Issuer.sol";
 
 contract IssuerImpl is Issuer {
     constructor(address[] memory owners, uint256 quorum)
-        public
         Issuer(owners, quorum, true)
     {
         // solhint-disable-previous-line no-empty-blocks

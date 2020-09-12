@@ -74,7 +74,6 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
      * @dev Constructor creates an Issuer contract
      */
     constructor(address[] memory owners, uint256 quorum, bool isLeaf)
-        public
         Owners(owners, quorum)
     {
         _isLeaf = isLeaf;

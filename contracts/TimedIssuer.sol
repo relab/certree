@@ -17,7 +17,7 @@ contract TimedIssuer is Timed, Issuer {
         uint256 quorum,
         uint256 startingTime,
         uint256 endingTime
-    ) public Issuer(owners, quorum, true) Timed(startingTime, endingTime) {
+    ) Issuer(owners, quorum, true) Timed(startingTime, endingTime) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

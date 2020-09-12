@@ -27,7 +27,7 @@ contract Owners {
      * @param ownersList is the array of all owners
      * @param quorumSize is the required number of owners to perform actions
      */
-    constructor(address[] memory ownersList, uint256 quorumSize) public {
+    constructor(address[] memory ownersList, uint256 quorumSize) {
         require(
             ownersList.length > 0 && ownersList.length < 256,
             "Owners: not enough owners"

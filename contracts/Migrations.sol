@@ -6,7 +6,7 @@ contract Migrations {
     // solhint-disable-next-line var-name-mixedcase
     uint256 public last_completed_migration;
 
-    constructor() public {
+    constructor() {
         owner = msg.sender;
     }
 

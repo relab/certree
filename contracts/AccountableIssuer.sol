@@ -37,7 +37,6 @@ abstract contract AccountableIssuer is Issuer {
     );
 
     constructor(address[] memory owners, uint256 quorum)
-        public
         Issuer(owners, quorum, false)
     {
         // solhint-disable-previous-line no-empty-blocks

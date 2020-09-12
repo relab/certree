@@ -43,7 +43,7 @@ abstract contract Timed {
      * @param startingTime Issuer starting time
      * @param endingTime Issuer ending time
      */
-    constructor(uint256 startingTime, uint256 endingTime) public {
+    constructor(uint256 startingTime, uint256 endingTime) {
         // solhint-disable-next-line not-rely-on-time
         require(
             startingTime >= block.timestamp,

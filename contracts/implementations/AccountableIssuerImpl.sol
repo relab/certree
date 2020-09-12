@@ -13,7 +13,6 @@ contract AccountableIssuerImpl is AccountableIssuer {
     );
 
     constructor(address[] memory owners, uint256 quorum)
-        public
         AccountableIssuer(owners, quorum)
     {
         // solhint-disable-previous-line no-empty-blocks
