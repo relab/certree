@@ -24,6 +24,7 @@ abstract contract Node is NodeInterface, Owners {
     constructor(Role role, address[] memory registrars, uint8 quorum)
         Owners(registrars, quorum) {
         _parent = msg.sender; // if parent is a contract, then this instance is a leaf or internal node, otherwise parent is a external account address and this instance is the highest root contract.
+        //TODO: check if is zero
         _role = role;
     }
 
@@ -87,10 +88,27 @@ abstract contract Node is NodeInterface, Owners {
      */
     function registerCredential(address subject, bytes32 digest)
         public
+        virtual
         onlyOwner
         isInitialized
     {
         _issuer.registerCredential(subject, digest, bytes32(0), new address[](0));
+    }
+
+    /**
+     * @notice aggregates the digests of a given
+     * subject.
+     * @param subject The subject of which the credentials will be aggregate
+     * @param digests The list of credentials' digests
+     */
+    function aggregateCredentials(address subject, bytes32[] memory digests)
+        public
+        virtual
+        onlyOwner
+        isInitialized
+        returns (bytes32)
+    {
+        return _issuer.aggregateCredentials(subject, digests);
     }
 
     /**
@@ -102,6 +120,7 @@ abstract contract Node is NodeInterface, Owners {
     function verifyCredentialRoot(address subject, bytes32 root)
         public
         view
+        virtual
         isInitialized
         returns (bool) {
             return _issuer.verifyCredentialRoot(subject, root);

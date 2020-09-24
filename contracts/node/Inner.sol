@@ -94,7 +94,7 @@ contract Inner is Node {
         address node,
         Role role
     ) public onlyOwner isInitialized returns (address) {// TODO: require a quorum of registrars
-        require(_role == Role.Inner, "NodeFactory/Node must be Inner");
+        require(_role == Role.Inner, "Inner/Node must be Inner");
         address[] memory registrars; //FIXME: require initialization
         uint8 quorum;
         if (role == Role.Leaf) {
