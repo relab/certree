@@ -133,6 +133,30 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     }
 
     /**
+     * @param digest The digest of the credential
+     * @return the root of the evidences of an issued credential proof.
+     */
+    function getEvidenceRoot(bytes32 digest) public view returns (bytes32) {
+        return issuedCredentials[digest].evidencesRoot;
+    }
+
+    function getCredentialProof(bytes32 digest)
+        public
+        view
+        returns (CredentialProof memory)
+    {
+        return issuedCredentials[digest];
+    }
+
+    function getRevocationProof(bytes32 digest)
+        public
+        view
+        returns (RevocationProof memory)
+    {
+        return revokedCredentials[digest];
+    }
+
+    /**
      * @dev verify if a credential proof was revoked
      * @return true if a revocation exists, false otherwise.
      */
