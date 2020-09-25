@@ -75,11 +75,11 @@ contract('Issuer', accounts => {
             it('should not allow a registrar to register credentials to themselves', async () => {
                 await expectRevert(
                     issuer.registerCredential(registrar1, digest1, constants.ZERO_BYTES32, [], { from: registrar1 }),
-                    'Issuer/subject cannot be the registrar'
+                    'Issuer/forbidden registrar'
                 );
                 await expectRevert(
                     issuer.registerCredential(registrar2, digest1, constants.ZERO_BYTES32, [], { from: registrar1 }),
-                    'Issuer/subject cannot be the registrar'
+                    'Issuer/forbidden registrar'
                 );
             });
 
@@ -452,21 +452,21 @@ contract('Issuer', accounts => {
             it('should revert if the credential does not exists', async () => {
                 await expectRevert(
                     issuer.verifyCredential(subject1, digest3),
-                    'Issuer/credential not found'
+                    'Notary/credential not found'
                 );
             });
 
             it('should revert if the credential is owned by the given subject', async () => {
                 await expectRevert(
                     issuer.verifyCredential(subject2, digest1),
-                    'Issuer/not owned by subject'
+                    'Notary/not owned by subject'
                 );
             });
 
             it('should revert if the is no credentials', async () => {
                 await expectRevert(
                     issuer.verifyIssuedCredentials(subject2),
-                    'Issuer/there are no issued credentials'
+                    'Issuer/there are no credentials'
                 );
             });
         });
@@ -526,7 +526,7 @@ contract('Issuer', accounts => {
 
                 await expectRevert(
                     issuer.aggregateCredentials(subject1, digests),
-                    'Issuer/there are no issued credentials'
+                    'Issuer/there are no credentials'
                 );
 
                 await issuer.confirmCredential(digest1, { from: subject1 });
@@ -536,7 +536,7 @@ contract('Issuer', accounts => {
             it('should revert if there is no credential to be aggregated for a given subject', async () => {
                 await expectRevert(
                     issuer.aggregateCredentials(subject1, digests),
-                    'Issuer/there are no issued credentials'
+                    'Issuer/there are no credentials'
                 );
             });
         });
@@ -583,7 +583,7 @@ contract('Issuer', accounts => {
             it('should revert if there is no credentials to verify', async () => {
                 await expectRevert(
                     issuer.verifyCredentialRoot(subject1, constants.ZERO_BYTES32),
-                    'Issuer/there are no issued credentials'
+                    'Issuer/there are no credentials'
                 );
             });
 
