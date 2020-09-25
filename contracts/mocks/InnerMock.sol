@@ -14,14 +14,9 @@ contract InnerMock is Inner {
     }
 
     function initializeIssuer() public override onlyOwner {
-        require(!initialized(), "Node/notarization already initialized");
+        require(!initialized(), "Node/already initialized");
         _issuer = new IssuerMock(_owners, _quorum);
-        _init = true;
         emit IssuerInitialized(address(_issuer), msg.sender);
-    }
-
-    function setBalance() public payable {
-        // address(this).balance += msg.value;
     }
 
     function getBalance() public view returns (uint256) {

@@ -43,15 +43,14 @@ abstract contract Timed {
      * @param endingTime Issuer ending time
      */
     constructor(uint256 startingTime, uint256 endingTime) {
-        // solhint-disable-next-line not-rely-on-time
         require(
+            // solhint-disable-next-line not-rely-on-time
             startingTime >= block.timestamp,
             "Timed/time in the past"
         );
-        // solhint-disable-next-line max-line-length
         require(
             endingTime > startingTime,
-            "Timed/ending time is smaller than starting time"
+            "Timed/wrong time range"
         );
 
         _startingTime = startingTime;
@@ -102,10 +101,9 @@ abstract contract Timed {
      * @param newEndingTime the new Issuer ending time
      */
     function _extendTime(uint256 newEndingTime) internal whileNotEnded {
-        // solhint-disable-next-line max-line-length
         require(
             newEndingTime > _endingTime,
-            "Timed/new time before current ending time"
+            "Timed/wrong time range"
         );
 
         emit PeriodExtended(_endingTime, newEndingTime);

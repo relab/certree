@@ -51,40 +51,6 @@ contract Inner is Node {
     }
 
     /**
-     * @notice verifyCredentials performs a pre-order tree traversal over
-     * the credential tree of a given subject and verifies if the given
-     * root match with the current root on the root node and if all the 
-     * sub-trees were correctly built.
-     * @param subject The subject of the credential tree
-     */
-    function verifyCredentialTree(address subject) public view isInitialized returns(bool) {
-        bytes32[] memory digests = _issuer.getDigests(subject);
-        assert(digests.length > 0);
-        // Verify local root if exists
-        if (_issuer.hasRoot(subject)) {
-            if (!_issuer.verifyRootOf(subject, digests)) {
-                return false;
-            }
-        }
-        // Verify credential and potential subtrees
-        for (uint256 i = 0; i < digests.length; i++) {
-            // FIXME: use "ABIEncoderV2"
-            // UnimplementedFeatureError: Encoding type "struct Notary.CredentialProof memory" not yet implemented.
-            // Notary.CredentialProof memory c = _issuer.getCredentialProof(digests[i]);
-            assert(_issuer.recordExists(digests[i]));
-            if (!_issuer.verifyCredential(subject, digests[i])) {
-                return false;
-            }
-            if(_issuer.witnessesLength(digests[i]) > 0) {
-                if (!_verifyCredentialNode(subject, _issuer.getEvidenceRoot(digests[i]), _issuer.getWitnesses(digests[i]))){
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    /**
      * @notice create a new node on the certification tree
      * @dev The new node can be a Leaf or a Inner node.
      * @param node The address of the node
@@ -121,6 +87,40 @@ contract Inner is Node {
             quorum,
             role
         );
+    }
+
+    /**
+     * @notice verifyCredentials performs a pre-order tree traversal over
+     * the credential tree of a given subject and verifies if the given
+     * root match with the current root on the root node and if all the
+     * sub-trees were correctly built.
+     * @param subject The subject of the credential tree
+     */
+    function verifyCredentialTree(address subject) public view isInitialized returns(bool) {
+        bytes32[] memory digests = _issuer.getDigests(subject);
+        assert(digests.length > 0);
+        // Verify local root if exists
+        if (_issuer.hasRoot(subject)) {
+            if (!_issuer.verifyRootOf(subject, digests)) {
+                return false;
+            }
+        }
+        // Verify credential and potential subtrees
+        for (uint256 i = 0; i < digests.length; i++) {
+            // FIXME: use "ABIEncoderV2"
+            // UnimplementedFeatureError: Encoding type "struct Notary.CredentialProof memory" not yet implemented.
+            // Notary.CredentialProof memory c = _issuer.getCredentialProof(digests[i]);
+            assert(_issuer.recordExists(digests[i]));
+            if (!_issuer.verifyCredential(subject, digests[i])) {
+                return false;
+            }
+            if(_issuer.witnessesLength(digests[i]) > 0) {
+                if (!_verifyCredentialNode(subject, _issuer.getEvidenceRoot(digests[i]), _issuer.getWitnesses(digests[i]))){
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /**

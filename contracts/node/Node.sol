@@ -5,13 +5,12 @@ import "../Owners.sol";
 import "../notary/Issuer.sol";
 import "./NodeInterface.sol";
 
+//TODO: make Ctree library
 abstract contract Node is NodeInterface, Owners {
 
-    bool internal _init = false;
+    Role immutable internal _role;
 
-    Role immutable _role;
-
-    address immutable _parent;
+    address immutable internal _parent;
 
     address[] internal _childrenList;
     
@@ -29,18 +28,17 @@ abstract contract Node is NodeInterface, Owners {
     }
 
     modifier isInitialized() {
-        require(initialized(), "Node/notarization not initialized");
+        require(initialized(), "Node/not initialized");
         _;
     }
 
     function initialized() public view returns(bool){
-        return _init;
+        return address(_issuer) != address(0);
     }
 
     function initializeIssuer() public virtual override onlyOwner {
-        require(!initialized(), "Node/notarization already initialized");
+        require(!initialized(), "Node/already initialized");
         _issuer = new Issuer(_owners, _quorum);
-        _init = true;
         emit IssuerInitialized(address(_issuer), msg.sender);
     }
 
@@ -52,8 +50,7 @@ abstract contract Node is NodeInterface, Owners {
     }
 
     /**
-     * @return true if the issuer contract is a leaf
-     * false otherwise.
+     * @return true if the issuer contract is a leaf false otherwise.
      */
     function isLeaf() public view override returns(bool) {
        return _role == Role.Leaf;

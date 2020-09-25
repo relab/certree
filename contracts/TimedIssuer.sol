@@ -25,8 +25,8 @@ contract TimedIssuer is Timed, Owners {
     }
 
     // TODO: add tests for extenting time
-    function extendTime(uint256 NewEndingTime) public onlyOwner {
-        _extendTime(NewEndingTime);
+    function extendTime(uint256 newEndingTime) public onlyOwner {
+        _extendTime(newEndingTime);
     }
 
     /**

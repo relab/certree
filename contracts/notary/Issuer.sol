@@ -16,12 +16,12 @@ import "./Notary.sol";
  // TODO: Allow upgradeable contract using similar approach of https://github.com/PeterBorah/ether-router
  contract Issuer is IssuerInterface, Owners, ERC165 {
     using Notary for Notary.CredentialTree;
-    Notary.CredentialTree _tree;
+    Notary.CredentialTree internal _tree;
 
     //TODO: define aggregator interface
     // Aggregator aggregator;
     using CredentialSum for CredentialSum.Root;
-    mapping(address => CredentialSum.Root) _root;
+    mapping(address => CredentialSum.Root) internal _root;
 
     modifier notRevoked(bytes32 digest) {
         require(
@@ -34,7 +34,7 @@ import "./Notary.sol";
     modifier hasIssuedCredentials(address subject) {
         require(
             _tree.issued[subject].length > 0,
-            "Issuer/there are no issued credentials"
+            "Issuer/there are no credentials"
         );
         _;
     }
@@ -268,7 +268,7 @@ import "./Notary.sol";
         // FIXME: the number of digests should be bounded to avoid gas limit on loops
         require(
             _tree._verifyProofs(subject, digests),
-            "Issuer/there are unsigned credentials"
+            "Issuer/contains invalid credentials"
         );
         return _root[subject].generateRoot(subject, digests);
     }
@@ -361,7 +361,7 @@ import "./Notary.sol";
         onlyOwner
         notRevoked(digest)
     {
-        require(!isOwner[subject], "Issuer/subject cannot be the registrar");
+        require(!isOwner[subject], "Issuer/forbidden registrar");
         _tree._issue(subject, digest, eRoot, witnesses);
     }
 }

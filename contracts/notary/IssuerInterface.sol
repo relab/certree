@@ -30,22 +30,68 @@ interface IssuerInterface {
     );
 
     /**
+     * @notice confirms the emission of a quorum signed credential proof
+     * @param digest The digest of the credential
+     */
+    function confirmCredential(bytes32 digest) external;
+
+    /**
+     * @notice registers a credential proof ensuring an append-only property
+     * @param subject The subject of the credential
+     * @param digest The digest of the credential
+     * @param eRoot The resulted hash of all witnesses' roots
+     * @param witnesses The list of all witnesses contracts
+     */
+    function registerCredential(
+        address subject,
+        bytes32 digest,
+        bytes32 eRoot,
+        address[] memory witnesses
+    ) external;
+
+    /**
+     * @notice revokeCredential revokes a credential for a given reason
+     * based on it's digest.
+     * @param digest The digest of the credential
+     * @param reason The hash of the reason of the revocation
+     * @dev The reason should be publicaly available for anyone to inspect
+     * i.e. Stored in a public swarm/ipfs address
+     */
+    function revokeCredential(bytes32 digest, bytes32 reason) external;
+
+    /**
+     * @notice aggregateCredentials aggregates the digests of a given
+     * subject.
+     * @param subject The subject of which the credentials will be aggregate
+     * @param digests The list of credentials' digests
+     */
+    function aggregateCredentials(address subject, bytes32[] memory digests)
+        external
+        returns (bytes32);
+
+    /**
      * @param subject The subject of the credential
      * @return the list of the registered digests of a subject
      */
-    function getDigests(address subject) external view returns (bytes32[] memory);
+    function getDigests(address subject)
+        external
+        view
+        returns (bytes32[] memory);
 
     /**
      * @param digest The digest of the credential
      * @return the length of the witnesses of an issued credential proof
      */
-    function witnessesLength(bytes32 digest) external view returns(uint256);
+    function witnessesLength(bytes32 digest) external view returns (uint256);
 
     /**
      * @param digest The digest of the credential
      * @return the witnesses of an issued credential proof
      */
-    function getWitnesses(bytes32 digest) external view returns(address[] memory);
+    function getWitnesses(bytes32 digest)
+        external
+        view
+        returns (address[] memory);
 
     /**
      * @param digest The digest of the credential
@@ -112,39 +158,6 @@ interface IssuerInterface {
      * @param digest The digest of the credential to be verified
      */
     function isApproved(bytes32 digest) external view returns (bool);
-
-    /**
-     * @notice confirms the emission of a quorum signed credential proof
-     * @param digest The digest of the credential
-     */
-    function confirmCredential(bytes32 digest) external;
-
-    /**
-     * @notice registers a credential proof ensuring an append-only property
-     * @param subject The subject of the credential
-     * @param digest The digest of the credential
-     * @param eRoot The resulted hash of all witnesses' roots
-     * @param witnesses The list of all witnesses contracts
-     */
-    function registerCredential(address subject, bytes32 digest, bytes32 eRoot, address[] memory witnesses) external;
-
-    /**
-     * @notice revokeCredential revokes a credential for a given reason
-     * based on it's digest.
-     * @param digest The digest of the credential
-     * @param reason The hash of the reason of the revocation
-     * @dev The reason should be publicaly available for anyone to inspect
-     * i.e. Stored in a public swarm/ipfs address
-     */
-    function revokeCredential(bytes32 digest, bytes32 reason) external;
-
-    /**
-     * @notice aggregateCredentials aggregates the digests of a given
-     * subject.
-     * @param subject The subject of which the credentials will be aggregate
-     * @param digests The list of credentials' digests
-     */
-    function aggregateCredentials(address subject, bytes32[] memory digests) external returns (bytes32);
 
     /**
      * @notice verifyCredential checks whether the credential is valid.
