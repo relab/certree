@@ -83,8 +83,8 @@ library Notary {
      * @param digest The digest of the credential
      * @return the issued credential proof
      */
-    function _getCredentialProof(CredentialTree storage self, bytes32 digest)
-        internal
+    function getCredentialProof(CredentialTree storage self, bytes32 digest)
+        public
         view
         returns (CredentialProof memory)
     {
@@ -95,8 +95,8 @@ library Notary {
      * @param digest The digest of the credential
      * @return the revoked credential proof
      */
-    function _getRevokedProof(CredentialTree storage self, bytes32 digest)
-        internal
+    function getRevokedProof(CredentialTree storage self, bytes32 digest)
+        public
         view
         returns (RevocationProof memory)
     {
@@ -108,8 +108,8 @@ library Notary {
      * @param digest The digest of the credential
      * @return true if an emission proof exists, false otherwise.
      */
-    function _recordExists(CredentialTree storage self, bytes32 digest)
-        internal
+    function recordExists(CredentialTree storage self, bytes32 digest)
+        public
         view
         returns (bool)
     {
@@ -121,8 +121,8 @@ library Notary {
      * @param digest The digest of the credential
      * @return true if a revocation exists, false otherwise.
      */
-    function _isRevoked(CredentialTree storage self, bytes32 digest)
-        internal
+    function isRevoked(CredentialTree storage self, bytes32 digest)
+        public
         view
         returns (bool)
     {
@@ -134,11 +134,11 @@ library Notary {
      * @param digest The digest of the credential
      * @param quorumSize The size of the quorum
      */
-    function _isQuorumSigned(
+    function isQuorumSigned(
         CredentialTree storage self,
         bytes32 digest,
         uint8 quorumSize
-    ) internal view returns (bool) {
+    ) public view returns (bool) {
         return self.records[digest].signed >= quorumSize;
     }
 
@@ -148,11 +148,11 @@ library Notary {
      * @param digest The digest of the credential
      * @param account The registrar's account
      */
-    function _isSigned(
+    function isSigned(
         CredentialTree storage self,
         bytes32 digest,
         address account
-    ) internal view returns (bool) {
+    ) public view returns (bool) {
         return self.credentialSigners[digest][account];
     }
 
@@ -160,8 +160,8 @@ library Notary {
      * @notice verify if a credential was signed by all parties
      * @param digest The digest of the credential to be verified
      */
-    function _isApproved(CredentialTree storage self, bytes32 digest)
-        internal
+    function isApproved(CredentialTree storage self, bytes32 digest)
+        public
         view
         returns (bool)
     {
@@ -328,7 +328,7 @@ library Notary {
             self.records[digest].subject == subject,
             "Notary/not owned by subject"
         );
-        return _isApproved(self, digest) && !_isRevoked(self, digest);
+        return isApproved(self, digest) && !isRevoked(self, digest);
     }
 
     /**

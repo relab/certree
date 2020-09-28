@@ -72,7 +72,7 @@ import "./Notary.sol";
         override
         returns (Notary.CredentialProof memory)
     {
-        return _tree._getCredentialProof(digest);
+        return _tree.getCredentialProof(digest);
     }
 
     /**
@@ -85,7 +85,7 @@ import "./Notary.sol";
         override
         returns (Notary.RevocationProof memory)
     {
-        return _tree._getRevokedProof(digest);
+        return _tree.getRevokedProof(digest);
     }
 
     /**
@@ -117,7 +117,7 @@ import "./Notary.sol";
      * @param digest The digest of the credential
      */
     function isQuorumSigned(bytes32 digest) public view returns(bool) {
-        return _tree._isQuorumSigned(digest, _quorum);
+        return _tree.isQuorumSigned(digest, _quorum);
     }
 
     /**
@@ -127,7 +127,7 @@ import "./Notary.sol";
      * @param account The registrar's account
      */
     function isSigned(bytes32 digest, address account) public view returns(bool) {
-        return _tree._isSigned(digest, account);
+        return _tree.isSigned(digest, account);
     }
 
     /**
@@ -178,7 +178,7 @@ import "./Notary.sol";
      * @return true if an credential proof exists, false otherwise.
      */
     function recordExists(bytes32 digest) public view override returns (bool) {
-        return _tree._recordExists(digest);
+        return _tree.recordExists(digest);
     }
 
     /**
@@ -187,7 +187,7 @@ import "./Notary.sol";
      * @return true if a revocation exists, false otherwise.
      */
     function isRevoked(bytes32 digest) public view override returns (bool) {
-        return _tree._isRevoked(digest);
+        return _tree.isRevoked(digest);
     }
 
     /**
@@ -228,7 +228,7 @@ import "./Notary.sol";
      * @param digest The digest of the credential to be verified
      */
     function isApproved(bytes32 digest) public view override returns (bool) {
-        return _tree._isApproved(digest);
+        return _tree.isApproved(digest);
     }
 
     /**

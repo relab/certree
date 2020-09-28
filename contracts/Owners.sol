@@ -45,7 +45,7 @@ contract Owners {
         );
         for (uint8 i = 0; i < ownersList.length; ++i) {
             // prevent duplicate and zero value address attack
-            assert(!isOwner[ownersList[i]] && ownersList[i] != address(0));
+            assert(!isOwner[ownersList[i]] && ownersList[i] != address(0x0));
             isOwner[ownersList[i]] = true;
         }
         _owners = ownersList;
@@ -86,13 +86,14 @@ contract Owners {
         return _ownersCount;
     }
 
+    //FIXME: commented to remove cost
     /**
      * @notice Change one of the owners
      * @param newOwner address of new owner
      */
     function changeOwner(address newOwner) public onlyOwner {
         require(
-            !isOwner[newOwner] && newOwner != address(0),
+            !isOwner[newOwner] && newOwner != address(0x0),
             "Owners/invalid address given"
         );
         // Owners should never be empty
