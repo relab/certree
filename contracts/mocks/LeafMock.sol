@@ -11,18 +11,19 @@ contract LeafMock is Leaf {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function initializeIssuer() public override onlyOwner {
-        require(!initialized(), "Node/already initialized");
-        _issuer = new IssuerMock(_owners, _quorum);
-        emit IssuerInitialized(address(_issuer), msg.sender);
+    function initializeIssuerMock() public {
+        address[] memory owners = Node(address(this)).owners();
+        uint8 quorum = Node(address(this)).quorum();
+        _node.issuer = new IssuerMock(owners, quorum);
+        initializeIssuer(address(_node.issuer));
     }
 
     function createApprovedCredential(address subject, bytes32 digest) public {
-        IssuerMock(address(_issuer)).createApprovedCredential(subject, digest);
+        IssuerMock(address(_node.issuer)).createApprovedCredential(subject, digest);
     }
 
     function resetRoot(address subject) public {
-        IssuerMock(address(_issuer)).resetRoot(subject);
+        IssuerMock(address(_node.issuer)).resetRoot(subject);
     }
 
 }

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.8.0;
 
-import "../node/Leaf.sol";
 import "../node/Inner.sol";
 import "./IssuerMock.sol";
 
@@ -13,10 +12,11 @@ contract InnerMock is Inner {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function initializeIssuer() public override onlyOwner {
-        require(!initialized(), "Node/already initialized");
-        _issuer = new IssuerMock(_owners, _quorum);
-        emit IssuerInitialized(address(_issuer), msg.sender);
+    function initializeIssuerMock() public {
+        address[] memory owners = Node(address(this)).owners();
+        uint8 quorum = Node(address(this)).quorum();
+        _node.issuer = new IssuerMock(owners, quorum);
+        initializeIssuer(address(_node.issuer));
     }
 
     function getBalance() public view returns (uint256) {
