@@ -14,14 +14,14 @@ import "./Notary.sol";
  * establishing a casual order between the credential proofs.
  */
  // TODO: Allow upgradeable contract using similar approach of https://github.com/PeterBorah/ether-router
- contract Issuer is IssuerInterface, Owners, ERC165 {
+abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     using Notary for Notary.CredentialTree;
-    Notary.CredentialTree internal _tree;
+    Notary.CredentialTree _tree;
 
     //TODO: define aggregator interface
     // Aggregator aggregator;
     using CredentialSum for CredentialSum.Root;
-    mapping(address => CredentialSum.Root) internal _root;
+    mapping(address => CredentialSum.Root) _root;
 
     modifier notRevoked(bytes32 digest) {
         require(
@@ -158,7 +158,7 @@ import "./Notary.sol";
      * @param subject The subject of the credential
      * @return the aggregated root of all credentials of a subject
      */
-    function getRootProof(address subject) public view override returns (bytes32) {
+    function getRootProof(address subject) public view virtual override returns (bytes32) {
         return _root[subject].proof;
     }
 
@@ -282,6 +282,7 @@ import "./Notary.sol";
     function verifyCredentialRoot(address subject, bytes32 root)
         public
         view
+        virtual
         override
         hasIssuedCredentials(subject)
         returns (bool)
