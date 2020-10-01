@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.8.0;
 
+import "../notary/IssuerInterface.sol";
+
 enum Role {Leaf, Inner}
 
 interface NodeInterface {
@@ -12,33 +14,12 @@ interface NodeInterface {
         Role role
     );
 
-    function initializeIssuer(address issuerAddress) external returns (bool);
-
     /**
-     * @notice register a new credential without witnesses
-     * @param subject The subject of the credential
-     * @param digest The digest of the credential that is being created
+     * @notice create a new node on the certification tree
+     * @dev The new node can be a Leaf or a Inner node.
+     * @param nodeAddress The address of the node
      */
-    function registerCredential(
-        address subject,
-        bytes32 digest,
-        address[] memory witnesses
-    ) external;
-
-    /**
-     * @notice aggregates the digests of a given
-     * subject.
-     * @param subject The subject of which the credentials will be aggregate
-     * @param digests The list of credentials' digests
-     */
-    function aggregateCredentials(address subject, bytes32[] memory digests)
-        external
-        returns (bytes32);
-
-    /**
-     * @return the registered issuer contract
-     */
-    function issuer() external view returns (address);
+    function addChild(address nodeAddress) external returns (address);
 
     /**
      * @return true if the issuer contract is a leaf false otherwise.
