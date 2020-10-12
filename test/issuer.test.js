@@ -79,9 +79,13 @@ contract('Issuer', accounts => {
 
         it('should successfully retrieve all revoked digests', async () => {
             await issuer1.revokeCredential(digest2, reason, { from: registrar1 });
-            const revoked = await issuer1.getRevoked(subject1);
 
+            let rc = await issuer1.revokedCounter(subject1);
+            expect(rc).to.be.bignumber.equal(new BN(1));
+
+            const revoked = await issuer1.getRevoked(subject1);
             expect(revoked).to.include.members([digest2]);
+            (revoked.length).should.equal(1);
         });
     });
 
@@ -537,14 +541,6 @@ contract('Issuer', accounts => {
                     'Issuer/there are no credentials'
                 );
             });
-
-            it('should revert if root proof does not exists', async () => {
-                await expectRevert(
-                    issuer.verifyRootOf(subject1, digests),
-                    'CredentialSum/proof not exists'
-                );
-            });
-
         });
     });
 
@@ -675,6 +671,13 @@ contract('Issuer', accounts => {
                 await expectRevert(
                     issuer.verifyCredentialRoot(subject1, constants.ZERO_BYTES32),
                     'Issuer/root not found'
+                );
+            });
+
+            it('should revert if root proof does not exists', async () => {
+                await expectRevert(
+                    issuer.verifyRootOf(subject1, digests),
+                    'CredentialSum/proof not exists'
                 );
             });
         });

@@ -333,18 +333,24 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     function getRevoked(address subject)
         public
         view
-        returns (address[] memory)
+        hasIssuedCredentials(subject)
+        returns (bytes32[] memory)
     {
-        address[] memory revoked = new address[](_tree.revokedCounter[subject]);
+        bytes32[] memory revoked = new bytes32[](_tree.revokedCounter[subject]);
         uint index = 0;
         uint i = 0;
         for (; i < _tree.issued[subject].length; i++) {
             if (isRevoked(_tree.issued[subject][i])) {
-                revoked[index] = _owners[i];
+                revoked[index] = _tree.issued[subject][i];
                 index++;
             }
         }
         return revoked;
+    }
+
+
+    function revokedCounter(address subject) public view returns(uint256) {
+        return _tree.revokedCounter[subject];
     }
 
     /**
