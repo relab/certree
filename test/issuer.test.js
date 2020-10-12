@@ -28,7 +28,62 @@ contract('Issuer', accounts => {
         });
     });
 
-    // TODO: validate getters
+    describe('getters', () => {
+        let issuer1, issuer2 = null;
+        let timestamp, block = 0;
+        const expectedRoot = hashByteArray([digest1, digest2]);
+
+        before(async () => {
+            issuer1 = await Issuer.new([registrar1], 1);
+            await issuer1.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar1 });
+            await issuer1.confirmCredential(digest1, { from: subject1 });
+
+            await time.increase(time.duration.seconds(1));
+
+            await issuer1.registerCredential(subject1, digest2, constants.ZERO_BYTES32, [], { from: registrar1 });
+            await issuer1.confirmCredential(digest2, { from: subject1 });
+
+            await issuer1.aggregateCredentials(subject1, [digest1, digest2], { from: registrar1 });
+            timestamp = await time.latest();
+            block = await time.latestBlock();
+
+            issuer2 = await Issuer.new([registrar2], 1);
+            await issuer2.registerCredential(subject1, digest3, expectedRoot, [issuer1.address], { from: registrar2 });
+        });
+
+        it('should successfully retrieve registered digests', async () => {
+            const digests = await issuer1.getDigests(subject1);
+            expect(digests).to.include.members([digest1, digest2]);
+        });
+
+        it('should successfully retrieve the witnesses of a credential', async () => {
+            const w = await issuer2.witnessesLength(digest3);
+            expect(w).to.be.bignumber.equal(new BN(1));
+
+            const witnesses = await issuer2.getWitnesses(digest3);
+            expect(witnesses).to.include.members([issuer1.address]);
+            (witnesses.length).should.equal(1);
+        });
+
+        it('should successfully retrieve the evidence root of a credential', async () => {
+            const rootHash = await issuer2.getEvidenceRoot(digest3);
+            (rootHash).should.equal(expectedRoot);
+        });
+
+        it('should successfully retrieve the root proof', async () => {
+            const root = await issuer1.getProof(subject1);
+            (root.proof).should.equal(expectedRoot);
+            expect(root.blockTimestamp).to.be.bignumber.equal(timestamp);
+            expect(root.insertedBlock).to.be.bignumber.equal(block);
+        });
+
+        it('should successfully retrieve all revoked digests', async () => {
+            await issuer1.revokeCredential(digest2, reason, { from: registrar1 });
+            const revoked = await issuer1.getRevoked(subject1);
+
+            expect(revoked).to.include.members([digest2]);
+        });
+    });
 
     describe('issuing', () => {
         beforeEach(async () => {
@@ -50,7 +105,15 @@ contract('Issuer', accounts => {
             assert.equal(credential.registrar, registrar1);
             assert.equal(credential.subject, subject1);
             expect(credential.witnesses).to.be.an('array').that.is.empty;
-            (credential.evidencesRoot).should.equal(constants.ZERO_BYTES32);
+            (credential.evidenceRoot).should.equal(constants.ZERO_BYTES32);
+        });
+
+        it('should successfully check if a credential exists', async () => {
+            (await issuer.recordExists(digest1)).should.equal(false);
+
+            await issuer.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar1 });
+
+            (await issuer.recordExists(digest1)).should.equal(true);
         });
 
         describe('revert', () => {
@@ -433,6 +496,11 @@ contract('Issuer', accounts => {
 
         describe('normal behaviour', () => {
 
+            it('should check the root proof', async () => {
+                await issuer.aggregateCredentials(subject1, digests);
+                (await issuer.verifyRootOf(subject1, digests)).should.equal(true);
+            });
+
             it('should check whether a credential was signed by all required parties', async () => {
                 (await issuer.verifyCredential(subject1, digest1)).should.equal(true);
             });
@@ -469,6 +537,14 @@ contract('Issuer', accounts => {
                     'Issuer/there are no credentials'
                 );
             });
+
+            it('should revert if root proof does not exists', async () => {
+                await expectRevert(
+                    issuer.verifyRootOf(subject1, digests),
+                    'CredentialSum/proof not exists'
+                );
+            });
+
         });
     });
 
@@ -495,6 +571,11 @@ contract('Issuer', accounts => {
             it('should aggregate all credentials of a subject', async () => {
                 const aggregated = await issuer.aggregateCredentials.call(subject1, digests); // don't emit event
                 (aggregated).should.equal(expected);
+            });
+
+            it('should successfully check whether a root exists', async () => {
+                await issuer.aggregateCredentials(subject1, digests);
+                (await issuer.hasRoot(subject1)).should.equal(true);
             });
 
             it('should return the already aggregated proof', async () => {
