@@ -91,7 +91,8 @@ module.exports = {
                             "evm.bytecode.sourceMap",
                             "evm.deployedBytecode.object",
                             "evm.deployedBytecode.sourceMap"
-                        ]
+                        ],
+                        "": ["ast"],
                     }
                 }
                 //  evmVersion: "byzantium"
