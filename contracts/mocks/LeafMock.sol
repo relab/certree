@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.8.0;
+pragma experimental ABIEncoderV2;
 
 import "../node/Leaf.sol";
 import "./IssuerMock.sol";
@@ -11,19 +12,12 @@ contract LeafMock is Leaf {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function initializeIssuerMock() public {
-        address[] memory owners = Node(address(this)).owners();
-        uint8 quorum = Node(address(this)).quorum();
-        _node.issuer = new IssuerMock(owners, quorum);
-        initializeIssuer(address(_node.issuer));
-    }
-
     function createApprovedCredential(address subject, bytes32 digest) public {
-        IssuerMock(address(_node.issuer)).createApprovedCredential(subject, digest);
+        IssuerMock(address(this)).createApprovedCredential(subject, digest);
     }
 
     function resetRoot(address subject) public {
-        IssuerMock(address(_node.issuer)).resetRoot(subject);
+        IssuerMock(address(this)).resetRoot(subject);
     }
 
 }

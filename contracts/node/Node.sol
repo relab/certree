@@ -170,11 +170,11 @@ abstract contract Node is NodeInterface, Issuer {
             }
             // FIXME: Not allow reuse of witness at same contract? keep a map of witnesses?
             // FIXME: consider use sha256(abi.encodePacked(roots, digests));
-            bytes32 evidencesRoot = CredentialSum.computeRoot(witenessProofs);
+            bytes32 evidenceRoot = CredentialSum.computeRoot(witenessProofs);
             super.registerCredential(
                 subject,
                 digest,
-                evidencesRoot,
+                evidenceRoot,
                 witnesses
             );
         }

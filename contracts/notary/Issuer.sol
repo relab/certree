@@ -151,7 +151,7 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
      * @return the root of the evidences of an issued credential proof.
      */
     function getEvidenceRoot(bytes32 digest) public view override returns (bytes32) {
-        return _tree.records[digest].evidencesRoot;
+        return _tree.records[digest].evidenceRoot;
     }
     
     /**
@@ -168,6 +168,7 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
      */
      // TODO: Implement it as a token?
      // TODO: Return an aggregator interface
+     // TODO: Rename function
     function getProof(address subject) public view returns (CredentialSum.Root memory) {
         return _root[subject];
     }

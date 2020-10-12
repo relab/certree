@@ -18,7 +18,7 @@ library Notary {
         address registrar; // The registrar address
         address subject; // The entity address refered by a proof
         address[] witnesses; // if witnesses is empty is a leaf notary, otherwise is a list of inner notaries
-        bytes32 evidencesRoot; // if is a leaf root is zero otherwise is the result of the aggregation of the digests at the witnesses
+        bytes32 evidenceRoot; // if is a leaf root is zero otherwise is the result of the aggregation of the digests at the witnesses
     }
 
     /**
@@ -279,7 +279,7 @@ library Notary {
             "Notary/credential not found"
         );
         address subject = self.records[digest].subject;
-        assert(subject != address(0));
+        require(subject != address(0), "Notary/subject cannot be zero");
         ++self.revokedCounter[subject];
         self.revoked[digest] = RevocationProof(
             msg.sender,
