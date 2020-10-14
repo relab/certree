@@ -1,16 +1,16 @@
 const { BN, time } = require('@openzeppelin/test-helpers');
 const { toWei, fromWei } = require('web3-utils');
 
-const Issuer = artifacts.require('IssuerImpl');
-const AccountableIssuer = artifacts.require('AccountableIssuerImpl');
+const Leaf = artifacts.require('LeafMock');
+const Inner = artifacts.require('InnerMock');
 
-async function createLeafIssuer(creator, owners) {
-    let contract = await Issuer.new(owners, owners.length, { from: creator });
+async function deployLeaf(creator, owners) {
+    let contract = await Leaf.new(owners, owners.length, { from: creator });
     return contract.address;
 }
 
-async function createNodeIssuer(creator, owners) {
-    let contract = await AccountableIssuer.new(owners, owners.length, { from: creator });
+async function deployInner(creator, owners) {
+    let contract = await Inner.new(owners, owners.length, { from: creator });
     return contract.address;
 }
 
@@ -18,30 +18,30 @@ async function createNodeIssuer(creator, owners) {
 async function createNotary(type, creator, owners) {
     let address;
     if (type == "leaf") {
-        address = await createLeafIssuer(creator, owners);
+        address = await deployLeaf(creator, owners);
     } else {
-        address = await createNodeIssuer(creator, owners);
+        address = await deployInner(creator, owners);
     }
     return { address: address, owners: owners };
 }
 
 // create a list of leaves based on the number of owners
 // i.e. one leaf per owner
-async function createLeaves(acIssuer, acOwner, leavesOwnersArray) {
+async function createLeaves(inner, innerOwner, leavesOwnersArray) {
     let leaves = [];
     for (owners of leavesOwnersArray) {
-        let issuerObj = await createNotary("leaf", acOwner, owners);
-        await acIssuer.addIssuer(issuerObj.address, { from: acOwner });
-        leaves.push(issuerObj);
+        let leaf = await createNotary("leaf", innerOwner, owners);
+        await inner.addChild(leaf.address, { from: innerOwner });
+        leaves.push(leaf);
     }
     return leaves
 }
 
-async function addNode(acIssuerAddress, acOwners, childrenAddress) {
-    let nodeContract = await AccountableIssuer.at(acIssuerAddress);
+async function addNode(innerAddress, innerOwners, childrenAddress) {
+    let nodeContract = await Inner.at(innerAddress);
     for (address of childrenAddress) {
-        let { logs } = await nodeContract.addIssuer(address, { from: acOwners[0] });
-        let addr = (logs.find(e => e.event == "IssuerAdded")).args.issuerAddress;
+        let { logs } = await nodeContract.addChild(address, { from: innerOwners[0] });
+        let addr = (logs.find(e => e.event == "NodeAdded")).args.LeafAddress;
         (address).should.equal(addr);
     }
 }
@@ -53,13 +53,13 @@ async function addNode(acIssuerAddress, acOwners, childrenAddress) {
 // returns [{ address: witnessAddress, certs: [{ subject: subjectAddress, digests: bytes32[] }] }]
 async function generateNodeCredentials(nodes, witnessesPerSubject, n) {
     let generatedNodes = [];
-    for (acIssuer of nodes) {
-        let certsPerIssuerBySubject = [];
-        let nodeContract = await AccountableIssuer.at(acIssuer.address);
+    for (inner of nodes) {
+        let certsPerLeafBySubject = [];
+        let nodeContract = await Inner.at(inner.address);
         for (w of witnessesPerSubject) {
             for (j = 0; j < n; j++) {
-                let certificateDigest = web3.utils.keccak256(web3.utils.toHex(`NodeCertificate${i}-${j}@${acIssuer.address}`));
-                for (owner of acIssuer.owners) {
+                let certificateDigest = web3.utils.keccak256(web3.utils.toHex(`NodeCertificate${i}-${j}@${inner.address}`));
+                for (owner of inner.owners) {
                     await nodeContract.registerCredential(w.subject, certificateDigest, w.witnesses, { from: owner });
                     await time.increase(time.duration.seconds(1));
                 }
@@ -67,10 +67,10 @@ async function generateNodeCredentials(nodes, witnessesPerSubject, n) {
                 await time.increase(time.duration.seconds(1));
                 (await nodeContract.certified(certificateDigest)).should.equal(true);
             }
-            let subjectCerts = await issuerContract.digestsBySubject(w.subject);
-            certsPerIssuerBySubject.push({ subject: w.subject, digests: subjectCerts });
+            let subjectCerts = await leafContract.digestsBySubject(w.subject);
+            certsPerLeafBySubject.push({ subject: w.subject, digests: subjectCerts });
         };
-        generatedNodes.push({ address: acIssuer.address, certs: certsPerIssuerBySubject });
+        generatedNodes.push({ address: inner.address, certs: certsPerLeafBySubject });
     };
     return generatedNodes;
 };
@@ -79,8 +79,8 @@ async function generateNodeCredentials(nodes, witnessesPerSubject, n) {
 async function getWitnesses(subject, contracts) {
     let witnesses = [];
     for (address of contracts) {
-        let issuerContract = await Issuer.at(address);
-        let nonce = await issuerContract.nonce(subject);
+        let leafContract = await Leaf.at(address);
+        let nonce = await leafContract.nonce(subject);
         // the subject have some credential issued in the contract
         if (nonce > 0) {
             witnesses.push(address);
@@ -107,46 +107,46 @@ async function getAllWitnesses(subjects, contracts) {
 // returns [{ address: witnessAddress, certs: [{ subject: subjectAddress, digests: bytes32[] }] }]
 async function generateLeafCredentials(leaves, subjects, n) {
     let generatedLeaves = [];
-    for (const issuer of leaves) {
-        let certsPerIssuerBySubject = [];
-        let issuerContract = await Issuer.at(issuer.address);
+    for (const leaf of leaves) {
+        let certsPerLeafBySubject = [];
+        let leafContract = await Leaf.at(leaf.address);
         for (i = 0; i < subjects.length; i++) {
             let subject = subjects[i];
             for (j = 0; j < n; j++) {
-                let certificateDigest = web3.utils.keccak256(web3.utils.toHex(`LeafCertificate${i}-${j}@${issuer.address}`));
-                for (owner of issuer.owners) {
-                    await issuerContract.registerCredential(subject, certificateDigest, { from: owner });
+                let certificateDigest = web3.utils.keccak256(web3.utils.toHex(`LeafCertificate${i}-${j}@${leaf.address}`));
+                for (owner of leaf.owners) {
+                    await leafContract.registerCredential(subject, certificateDigest, { from: owner });
                     await time.increase(time.duration.seconds(1));
                 }
-                await issuerContract.confirmCredential(certificateDigest, { from: subject });
+                await leafContract.confirmCredential(certificateDigest, { from: subject });
                 await time.increase(time.duration.seconds(1));
-                (await issuerContract.certified(certificateDigest)).should.equal(true);
+                (await leafContract.certified(certificateDigest)).should.equal(true);
             }
-            let subjectCerts = await issuerContract.digestsBySubject(subject);
-            certsPerIssuerBySubject.push({ subject: subject, digests: subjectCerts });
+            let subjectCerts = await leafContract.digestsBySubject(subject);
+            certsPerLeafBySubject.push({ subject: subject, digests: subjectCerts });
         }
-        generatedLeaves.push({ address: issuer.address, certs: certsPerIssuerBySubject });
+        generatedLeaves.push({ address: leaf.address, certs: certsPerLeafBySubject });
     };
     return generatedLeaves;
 };
 
 // return hashByteArray(bytes32[]) performed by the contract
-async function aggregateLeaf(issuerContract, owner, subject) {
-    await issuerContract.aggregateCredentials(subject, { from: owner });
-    return await issuerContract.getProof(subject);
+async function aggregateLeaf(leafContract, owner, subject) {
+    await leafContract.aggregateCredentials(subject, { from: owner });
+    return await leafContract.getProof(subject);
 };
 
 // returns [ hashByteArray(bytes32[]), bytes32[] ]
 async function aggregateSubTree(rootContract, subject) {
-    let rootPerIssuer = []; // evidences
-    let issuerAddresses = await rootContract.issuers();
-    for (i = 0; i < issuerAddresses.length; i++) {
-        let issuerContract = await Issuer.at(issuerAddresses[i]);
-        let issuerOwners = await issuerContract.owners();
-        aggregation = await aggregateLeaf(issuerContract, issuerOwners[0], subject);
-        rootPerIssuer.push(aggregation);
+    let rootPerLeaf = []; // evidences
+    let leafAddresses = await rootContract.getChildren();
+    for (i = 0; i < leafAddresses.length; i++) {
+        let leafContract = await Leaf.at(leafAddresses[i]);
+        let leafOwners = await leafContract.owners();
+        aggregation = await aggregateLeaf(leafContract, leafOwners[0], subject);
+        rootPerLeaf.push(aggregation);
     }
-    return [hashByteArray(rootPerIssuer), rootPerIssuer];
+    return [hashByteArray(rootPerLeaf), rootPerLeaf];
 };
 
 // @witnesses: [{ address: witnessAddress, certs: [{ subject: subjectAddress, digests: bytes32[] }] }]
