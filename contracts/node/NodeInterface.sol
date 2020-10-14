@@ -19,7 +19,7 @@ interface NodeInterface {
      * @dev The new node can be a Leaf or a Inner node.
      * @param nodeAddress The address of the node
      */
-    function addChild(address nodeAddress) external returns (address);
+    function addChild(address nodeAddress) external;
 
     /**
      * @return true if the issuer contract is a leaf false otherwise.
@@ -35,23 +35,6 @@ interface NodeInterface {
      * @return the node role.
      */
     function getRole() external view returns (Role);
-
-    /**
-     * @param subject The subject of the credential
-     * @return the aggregated root of all credentials of a subject
-     */
-    function getRootProof(address subject) external view returns (bytes32);
-
-    /**
-     * @notice verifyCredentialRoot checks whether the root exists
-     * and was correctly built based on the existent tree.
-     * @param subject The subject of the credential tree
-     * @param root The root to be checked.
-     */
-    function verifyCredentialRoot(address subject, bytes32 root)
-        external
-        view
-        returns (bool);
 
     /**
      * @notice verifyCredentialTree verifies if the credential tree

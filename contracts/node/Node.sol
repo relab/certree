@@ -7,14 +7,18 @@ import "./Node.sol";
 import "./NodeInterface.sol";
 import "../notary/Issuer.sol";
 
-abstract contract Node is NodeInterface, Issuer {
+contract Node is NodeInterface, Issuer {
+    bytes4[] private _supportedInterfaces = [
+        type(NodeInterface).interfaceId,
+        type(IssuerInterface).interfaceId
+    ];
     address immutable internal _parent;
 
     Role internal _role;
 
     address[] internal _children;
 
-    mapping(address => bool) internal _isChild;
+    mapping(address => bool) public isChild;
 
     event NodeAdded(
         address indexed createdBy,
@@ -28,6 +32,10 @@ abstract contract Node is NodeInterface, Issuer {
         require(msg.sender != address(0x0),"Node/sender cannot be 0");
         _parent = msg.sender; // if parent is a contract, then this instance is a leaf or internal node, otherwise parent is a external account address and this instance is the highest root contract.
         _role = role;
+    }
+
+    function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
+        return interfaceId == type(ERC165).interfaceId || interfaceId == type(NodeInterface).interfaceId || interfaceId == type(IssuerInterface).interfaceId;
     }
 
     /**
@@ -50,13 +58,11 @@ abstract contract Node is NodeInterface, Issuer {
         return _role;
     }
 
-    function getRootProof(address subject)
-        public
-        view
-        override(NodeInterface, Issuer)
-        returns (bytes32)
-    {
-        return super.getRootProof(subject);
+    /**
+     * @return the list of children nodes' addresses.
+     */
+    function getChildren() public view returns(address[] memory){
+        return _children;
     }
 
     /**
@@ -73,11 +79,16 @@ abstract contract Node is NodeInterface, Issuer {
     //        - not allow adding node where the sender is an owner of the parent
     //        - this function can be used by derivants to allows cycles,
     // and there is no easy way to detect it other than going through all children of `nodeAddress` and checking if any reference this.
-    function _addNode(address nodeAddress) private {
+    function _addNode(address nodeAddress, Role role) private {
         require(address(this) != nodeAddress, "Node/cannot add itself");
-        require(!_isChild[nodeAddress], "Node/node already added");
-        _isChild[nodeAddress] = true;
+        require(!isChild[nodeAddress], "Node/node already added");
+        require(
+            role == Role.Leaf || role == Role.Inner,
+            "Node/invalid child role"
+        );
+        isChild[nodeAddress] = true;
         _children.push(nodeAddress);
+        emit NodeAdded(msg.sender, nodeAddress, role);
     }
 
     //TODO: Remove nodes (require quorum)
@@ -91,32 +102,20 @@ abstract contract Node is NodeInterface, Issuer {
         public
         override
         onlyOwner
-        returns (address)
     {
         // TODO: require a quorum of registrars?
         require(_role == Role.Inner, "Node/node must be Inner");
 
-        bool isNodeLike = ERC165Checker.supportsInterface(
-            nodeAddress,
-            type(NodeInterface).interfaceId
+        bool isNodeLike = ERC165Checker.supportsAllInterfaces(
+            address(this),
+            _supportedInterfaces
         );
         assert(isNodeLike);
 
         NodeInterface node = NodeInterface(nodeAddress);
-        bool isIssuerLike = ERC165Checker.supportsInterface(
-            address(node),
-            type(IssuerInterface).interfaceId
-        );
-        assert(isIssuerLike);
-
         Role role = node.getRole();
-        require(
-            role == Role.Leaf || role == Role.Inner,
-            "Node/invalid child role"
-        );
         //FIXME: Assert if owners are different?
-        _addNode(nodeAddress);
-        emit NodeAdded(msg.sender, nodeAddress, role);
+        _addNode(nodeAddress, role);
     }
 
     /**
@@ -152,7 +151,7 @@ abstract contract Node is NodeInterface, Issuer {
             for (uint256 i = 0; i < witnesses.length; i++) {
                 address nodeAddress = address(witnesses[i]);
                 require(
-                    _isChild[nodeAddress],
+                    isChild[nodeAddress],
                     "Node/address not authorized"
                 );
                 bool success = ERC165Checker.supportsInterface(
@@ -226,19 +225,6 @@ abstract contract Node is NodeInterface, Issuer {
     }
 
     /**
-     * @notice verifyCredentialRoot checks whether the root exists
-     * and was correctly built based on the existent tree.
-     * @param subject The subject of the credential tree
-     * @param root The root to be checked.
-     */
-    function verifyCredentialRoot(
-        address subject,
-        bytes32 root
-    ) public view override(NodeInterface, Issuer) returns (bool) {
-        return super.verifyCredentialRoot(subject, root);
-    }
-
-    /**
      * @notice verifyCredentialNode iteractivally verifies if a given
      * credential proof (represented by it's digest) corresponds to
      * the aggregation of all stored proofs of a particular subject
@@ -258,18 +244,24 @@ abstract contract Node is NodeInterface, Issuer {
         for (uint256 i = 0; i < witnesses.length; i++) {
             address witnessesAddress = address(witnesses[i]);
             require(
-                _isChild[witnessesAddress],
+                isChild[witnessesAddress],
                 "Node/address not authorized"
             );
-            NodeInterface node = NodeInterface(witnessesAddress);
             bool isNodeLike = ERC165Checker.supportsInterface(
-                address(node),
+                witnessesAddress,
                 type(NodeInterface).interfaceId
             );
             assert(isNodeLike);
+            NodeInterface node = NodeInterface(witnessesAddress);
             if (node.isLeaf()) {
-                proofs[i] = node.getRootProof(subject);
-                if (!node.verifyCredentialRoot(subject, proofs[i])) {
+                bool isIssuerLike = ERC165Checker.supportsInterface(
+                    witnessesAddress,
+                    type(IssuerInterface).interfaceId
+                );
+                assert(isIssuerLike);
+                IssuerInterface issuer = IssuerInterface(witnessesAddress);
+                proofs[i] = issuer.getRootProof(subject);
+                if (!issuer.verifyCredentialRoot(subject, proofs[i])) {
                     return false;
                 }
             } else {

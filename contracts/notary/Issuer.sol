@@ -45,7 +45,7 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function supportsInterface(bytes4 interfaceId) override external pure returns (bool) {
+    function supportsInterface(bytes4 interfaceId) external pure override virtual returns (bool) {
         return interfaceId == type(ERC165).interfaceId || interfaceId == type(IssuerInterface).interfaceId;
     }
 
