@@ -1,4 +1,4 @@
-const { BN, time } = require('@openzeppelin/test-helpers');
+const { BN, time, constants } = require('@openzeppelin/test-helpers');
 const { toWei, fromWei } = require('web3-utils');
 
 const Leaf = artifacts.require('LeafMock');
@@ -104,69 +104,74 @@ async function getAllWitnesses(subjects, contracts) {
 // @leaves: []object{ contractAddress: []ownersAddress }
 // @subjects: []subjectsAddress
 // @n: int - number of credentials
-// returns [{ address: witnessAddress, certs: [{ subject: subjectAddress, digests: bytes32[] }] }]
+// returns witness by subject by certs:
+// { witnessAddress: { subjectAddress: bytes32[] } }
 async function generateLeafCredentials(leaves, subjects, n) {
-    let generatedLeaves = [];
+    let generatedLeaves = {};
     for (const leaf of leaves) {
-        let certsPerLeafBySubject = [];
+        let certsPerLeafBySubject = {};
         let leafContract = await Leaf.at(leaf.address);
         for (i = 0; i < subjects.length; i++) {
             let subject = subjects[i];
             for (j = 0; j < n; j++) {
                 let certificateDigest = web3.utils.keccak256(web3.utils.toHex(`LeafCertificate${i}-${j}@${leaf.address}`));
                 for (owner of leaf.owners) {
-                    await leafContract.registerCredential(subject, certificateDigest, { from: owner });
+                    await leafContract.registerCredential(subject, certificateDigest, [], { from: owner });
                     await time.increase(time.duration.seconds(1));
                 }
                 await leafContract.confirmCredential(certificateDigest, { from: subject });
                 await time.increase(time.duration.seconds(1));
-                (await leafContract.certified(certificateDigest)).should.equal(true);
+                (await leafContract.isApproved(certificateDigest)).should.equal(true);
             }
-            let subjectCerts = await leafContract.digestsBySubject(subject);
-            certsPerLeafBySubject.push({ subject: subject, digests: subjectCerts });
+            let subjectCerts = await leafContract.getDigests(subject);
+            certsPerLeafBySubject[subject] = subjectCerts;
         }
-        generatedLeaves.push({ address: leaf.address, certs: certsPerLeafBySubject });
+        generatedLeaves[leaf.address] = certsPerLeafBySubject;
     };
     return generatedLeaves;
 };
 
 // return hashByteArray(bytes32[]) performed by the contract
-async function aggregateLeaf(leafContract, owner, subject) {
-    await leafContract.aggregateCredentials(subject, { from: owner });
-    return await leafContract.getProof(subject);
+async function aggregateLeaf(leafContract, owner, subject, certs) {
+    await leafContract.aggregateCredentials(subject, certs, { from: owner });
+    return await leafContract.getRootProof(subject);
 };
 
 // returns [ hashByteArray(bytes32[]), bytes32[] ]
-async function aggregateSubTree(rootContract, subject) {
+async function aggregateSubTree(witnesses, subject) {
     let rootPerLeaf = []; // evidences
-    let leafAddresses = await rootContract.getChildren();
-    for (i = 0; i < leafAddresses.length; i++) {
-        let leafContract = await Leaf.at(leafAddresses[i]);
+    for (let [leaf, certsPerSubject] of Object.entries(witnesses)) {
+        let leafContract = await Leaf.at(leaf);
         let leafOwners = await leafContract.owners();
-        aggregation = await aggregateLeaf(leafContract, leafOwners[0], subject);
+        aggregation = await aggregateLeaf(leafContract, leafOwners[0], subject, certsPerSubject[subject]);
         rootPerLeaf.push(aggregation);
     }
-    return [hashByteArray(rootPerLeaf), rootPerLeaf];
+    return [hashByteArray(rootPerLeaf), rootPerLeaf]; // [root, evidences]
 };
 
-// @witnesses: [{ address: witnessAddress, certs: [{ subject: subjectAddress, digests: bytes32[] }] }]
-// returns [{ address: witnessAddress, roots: [{ subject: subjectAddress, root: bytes32 }] }]
+// @witnesses: { witnessAddress: { subjectAddress: bytes32[] } }
+// returns witness by subject by root:
+// returns { witnessAddress: { subjectAddress: bytes32 } }
 function computeSubTree(witnesses) {
-    var rootPerWitness = [];
-    for (w of witnesses) {
-        var rootPerSubject = [];
-        for (c of w.certs) { // aggregate all certs of witness w per subject
-            rootPerSubject.push({ subject: c.subject, root: hashByteArray(c.digests) });
+    var rootPerWitness = {};
+    for (let [w, certsPerSubject] of Object.entries(witnesses)) {
+        var rootPerSubject = {};
+        for (let [s, certs] of Object.entries(certsPerSubject)) {// aggregate all certs of witness w per subject
+            rootPerSubject[s] = hashByteArray(certs);
         }
-        rootPerWitness.push({ address: w.address, roots: rootPerSubject });
+        rootPerWitness[w] = rootPerSubject;
     }
     return rootPerWitness;
 }
 
-function aggregationsOf(rootPerWitness, subject) {
-    return rootPerWitness.map(w =>
-        w.roots.filter(r => r.subject == subject)
-            .map(c => c.root)).flat();
+function aggregationsOf(witnesses, subject) {
+    roots = []
+    for (let [w, rootPerSubject] of Object.entries(witnesses)) {
+        if (w.hasOwnProperty(subject)) {
+            roots.push(w[subject]);
+        }
+    }
+    return roots;
 }
 
 function hash(data) {

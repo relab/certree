@@ -363,6 +363,7 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     // TODO: check if subject isn't a contract address?
     // Use `extcodesize` can be tricky since it will also return 0 for the constructor method of a contract, but it seems that isn't a problem in this context, since it isn't being used to prevent any action.
     // TODO: improve the quorum check
+    // FIXME: make issuer methods internal
     function registerCredential(address subject, bytes32 digest, bytes32 eRoot, address[] memory witnesses)
         public
         override
