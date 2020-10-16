@@ -11,7 +11,7 @@
     "console": "truffle console",
     "migrate": "truffle migrate --reset",
     "test": "truffle test",
-    "test:gas": "truffle test --network ganache test/gas-report/* -- -r",
+    "test:gas": "truffle test --network ganache test/gas-report/*.js",
     "coverage": "truffle run coverage --file=\"test/*.js\" --network ganache",
     "lint": "npm run lint:js && npm run lint:sol",
     "lint:js": "eslint .",
@@ -20,7 +20,7 @@
     "sol2uml": "sol2uml ./contracts -b Node -o Node.svg",
     "ganache-cli": "ganache-cli --deterministic --networkId 5777 --host 127.0.0.1 --port 7545",
     "migrate:ganache": "truffle migrate --reset --network ganache",
-    "test:ganache": "truffle test --network ganache",
+    "test:ganache": "truffle test --network ganache test/*.js",
     "ropsten-fork": "ROPSTEN_TESTNET=true scripts/run_local_ropsten_fork.sh",
     "test:ropsten": "ROPSTEN_TESTNET=true truffle test --network ropsten",
     "migrate:ropsten": "ROPSTEN_TESTNET=true truffle migrate --reset --network ropsten"
