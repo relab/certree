@@ -20,12 +20,6 @@ contract Node is NodeInterface, Issuer {
 
     mapping(address => bool) public isChild;
 
-    event NodeAdded(
-        address indexed createdBy,
-        address indexed nodeAddress,
-        Role role
-    );
-
     constructor(Role role, address[] memory registrars, uint8 quorum)
         Issuer(registrars, quorum)
     {

@@ -9,8 +9,6 @@ interface NodeInterface {
     event NodeAdded(
         address indexed createdBy,
         address indexed nodeAddress,
-        address[] registrars,
-        uint8 quorum,
         Role role
     );
 
