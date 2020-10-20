@@ -217,9 +217,13 @@ library Notary {
             self.previous[subject] = digest;
             emit CredentialIssued(digest, subject, msg.sender, block.number);
         } else {
+            CredentialProof memory c = self.records[digest];
+            require(c.subject == subject, "Notary/digest already registered");
+            //TODO: Check the same witnesses
+            require(c.evidenceRoot == eRoot, "Notary/mismatched evidence root");
             require(
-                self.records[digest].subject == subject,
-                "Notary/already registered"
+                c.witnesses.length == witnesses.length,
+                "Notary/mismatched witnesses"
             );
             // Register sign action
             ++self.records[digest].signed;
