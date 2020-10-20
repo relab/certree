@@ -38,7 +38,7 @@ contract TimedIssuer is Timed, Issuer {
         onlyOwner
         whileNotEnded
     {
-        super.registerCredential(subject, digest, bytes32(0), new address[](0));
+        _registerCredential(subject, digest, bytes32(0), new address[](0));
     }
 
     /**
@@ -46,11 +46,10 @@ contract TimedIssuer is Timed, Issuer {
      */
     function aggregateCredentials(address subject, bytes32[] memory digests)
         public
-        override
         onlyOwner
         returns (bytes32)
     {
         require(hasEnded(), "TimedIssuer/period not ended yet");
-        return super.aggregateCredentials(subject, digests);
+        return _aggregateCredentials(subject, digests);
     }
 }

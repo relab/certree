@@ -3,7 +3,6 @@ pragma solidity >=0.7.0 <0.8.0;
 pragma experimental ABIEncoderV2;
 
 import "../node/Inner.sol";
-import "./IssuerMock.sol";
 
 contract InnerMock is Inner {
 

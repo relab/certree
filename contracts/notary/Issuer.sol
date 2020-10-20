@@ -2,10 +2,8 @@
 pragma solidity >=0.7.0 <0.8.0;
 pragma experimental ABIEncoderV2;
 
-import "../ERC165.sol";
 import "../Owners.sol";
 import "../aggregator/CredentialSum.sol";
-import "./IssuerInterface.sol";
 import "./Notary.sol";
 
 /**
@@ -14,7 +12,8 @@ import "./Notary.sol";
  * establishing a casual order between the credential proofs.
  */
  // TODO: Allow upgradeable contract using similar approach of https://github.com/PeterBorah/ether-router
-abstract contract Issuer is IssuerInterface, Owners, ERC165 {
+// TODO: make issuer a library
+abstract contract Issuer is Owners {
     using Notary for Notary.CredentialTree;
     Notary.CredentialTree _tree;
 
@@ -22,6 +21,30 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     // Aggregator aggregator;
     using CredentialSum for CredentialSum.Root;
     mapping(address => CredentialSum.Root) _root;
+
+    // Logged when a credential is issued/created.
+    event CredentialIssued(
+        bytes32 indexed digest,
+        address indexed subject,
+        address indexed registrar,
+        uint256 insertedBlock
+    );
+
+    // Logged when a credential is revoked by some owner.
+    event CredentialRevoked(
+        bytes32 indexed digest,
+        address indexed subject,
+        address indexed revoker,
+        uint256 revokedBlock,
+        bytes32 reason
+    );
+
+    // Logged when a credential is signed.
+    event CredentialSigned(
+        address indexed signer,
+        bytes32 indexed digest,
+        uint256 signedBlock
+    );
 
     modifier notRevoked(bytes32 digest) {
         require(
@@ -45,10 +68,6 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function supportsInterface(bytes4 interfaceId) external pure override virtual returns (bool) {
-        return interfaceId == type(ERC165).interfaceId || interfaceId == type(IssuerInterface).interfaceId;
-    }
-
     /**
      * @param subject The subject of the credential
      * @return the list of the issued credentials' digests of a subject
@@ -56,7 +75,6 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     function getDigests(address subject)
         public
         view
-        override
         returns (bytes32[] memory)
     {
         return _tree.issued[subject];
@@ -69,7 +87,6 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     function getCredentialProof(bytes32 digest)
         public
         view
-        override
         returns (Notary.CredentialProof memory)
     {
         return _tree.getCredentialProof(digest);
@@ -82,7 +99,6 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     function getRevokedProof(bytes32 digest)
         public
         view
-        override
         returns (Notary.RevocationProof memory)
     {
         return _tree.getRevokedProof(digest);
@@ -134,7 +150,7 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
      * @param digest The digest of the credential
      * @return the length of the witnesses of an issued credential proof
      */
-    function witnessesLength(bytes32 digest) public view override returns(uint256) {
+    function witnessesLength(bytes32 digest) public view returns(uint256) {
         return _tree.records[digest].witnesses.length;
     }
 
@@ -142,7 +158,7 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
      * @param digest The digest of the credential
      * @return the witnesses of an issued credential proof
      */
-    function getWitnesses(bytes32 digest) public view override returns(address[] memory){
+    function getWitnesses(bytes32 digest) public view returns(address[] memory){
         return _tree.records[digest].witnesses;
     }
 
@@ -150,7 +166,7 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
      * @param digest The digest of the credential
      * @return the root of the evidences of an issued credential proof.
      */
-    function getEvidenceRoot(bytes32 digest) public view override returns (bytes32) {
+    function getEvidenceRoot(bytes32 digest) public view returns (bytes32) {
         return _tree.records[digest].evidenceRoot;
     }
     
@@ -158,7 +174,7 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
      * @param subject The subject of the credential
      * @return the aggregated root of all credentials of a subject
      */
-    function getRootProof(address subject) public view virtual override returns (bytes32) {
+    function _getRoot(address subject) internal view virtual returns (bytes32) {
         return _root[subject].proof;
     }
 
@@ -178,7 +194,7 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
      * @param digest The digest of the credential
      * @return true if an credential proof exists, false otherwise.
      */
-    function recordExists(bytes32 digest) public view override returns (bool) {
+    function recordExists(bytes32 digest) public view returns (bool) {
         return _tree.recordExists(digest);
     }
 
@@ -187,7 +203,7 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
      * @param digest The digest of the credential
      * @return true if a revocation exists, false otherwise.
      */
-    function isRevoked(bytes32 digest) public view override returns (bool) {
+    function isRevoked(bytes32 digest) public view returns (bool) {
         return _tree.isRevoked(digest);
     }
 
@@ -195,7 +211,7 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
      * @notice check whether the root exists
      * @param subject The subject of the credential tree
      */
-    function hasRoot(address subject) public view override returns (bool)
+    function hasRoot(address subject) public view returns (bool)
     {
         return _root[subject].hasRoot();
     }
@@ -209,7 +225,6 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     function verifyRootOf(address subject, bytes32[] memory digests)
         public
         view
-        override
         returns (bool)
     {
         return _root[subject].verifySelfRoot(digests);
@@ -219,7 +234,7 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
      * @notice confirms the emission of a quorum signed credential proof
      * @param digest The digest of the credential
      */
-    function confirmCredential(bytes32 digest) public override notRevoked(digest) {
+    function _confirmCredential(bytes32 digest) internal notRevoked(digest) {
         require(quorum() > 0,"Issuer/no quorum found");
         require(_tree._approve(digest, quorum()), "Issuer/approval failed");
     }
@@ -228,12 +243,12 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
      * @notice verify if a credential was signed by all parties
      * @param digest The digest of the credential to be verified
      */
-    function isApproved(bytes32 digest) public view override returns (bool) {
+    function isApproved(bytes32 digest) public view returns (bool) {
         return _tree.isApproved(digest);
     }
 
     /**
-     * @notice revokeCredential revokes a credential for a given reason
+     * @notice revokes a credential for a given reason
      * based on it's digest.
      * @param digest The digest of the credential
      * @param reason The hash of the reason of the revocation
@@ -241,9 +256,8 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
      * i.e. Stored in a public swarm/ipfs address
      */
      // TODO: require quorum
-    function revokeCredential(bytes32 digest, bytes32 reason)
-        public
-        override
+    function _revokeCredential(bytes32 digest, bytes32 reason)
+        internal
         notRevoked(digest)
     {
         address subject = _tree.records[digest].subject;
@@ -252,15 +266,13 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     }
 
     /**
-     * @notice aggregateCredentials aggregates the digests of a given
+     * @notice aggregates the digests of a given
      * subject.
      * @param subject The subject of which the credentials will be aggregate
      * @param digests The list of credentials' digests
      */
-    function aggregateCredentials(address subject, bytes32[] memory digests)
-        public
-        virtual
-        override
+    function _aggregateCredentials(address subject, bytes32[] memory digests)
+        internal
         onlyOwner
         hasIssuedCredentials(subject)
         returns (bytes32)
@@ -275,16 +287,14 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     }
 
     /**
-     * @notice verifyCredentialRoot checks whether the root exists
+     * @notice checks whether the root exists
      * and was correctly built based on the existent tree.
      * @param subject The subject of the credential tree
      * @param root The root to be checked.
      */
-    function verifyCredentialRoot(address subject, bytes32 root)
-        public
+    function _verifyCredentialRoot(address subject, bytes32 root)
+        internal
         view
-        virtual
-        override
         hasIssuedCredentials(subject)
         returns (bool)
     {
@@ -306,7 +316,6 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     function verifyIssuedCredentials(address subject)
         public
         view
-        override
         hasIssuedCredentials(subject)
         returns (bool)
     {
@@ -323,7 +332,6 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     function verifyCredential(address subject, bytes32 digest)
         public
         view
-        override
         returns (bool)
     {
         return _tree._verifyCredential(subject, digest);
@@ -364,9 +372,8 @@ abstract contract Issuer is IssuerInterface, Owners, ERC165 {
     // Use `extcodesize` can be tricky since it will also return 0 for the constructor method of a contract, but it seems that isn't a problem in this context, since it isn't being used to prevent any action.
     // TODO: improve the quorum check
     // FIXME: make issuer methods internal
-    function registerCredential(address subject, bytes32 digest, bytes32 eRoot, address[] memory witnesses)
-        public
-        override
+    function _registerCredential(address subject, bytes32 digest, bytes32 eRoot, address[] memory witnesses)
+        internal
         onlyOwner
         notRevoked(digest)
     {

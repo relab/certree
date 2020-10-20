@@ -126,7 +126,7 @@ contract('Issuer', accounts => {
 
                 await expectRevert(
                     issuer.registerCredential(subject2, digest1, constants.ZERO_BYTES32, [], { from: registrar2 }),
-                    'Notary/already registered'
+                    'Notary/digest already registered'
                 );
             });
 
@@ -163,7 +163,7 @@ contract('Issuer', accounts => {
 
                 await expectRevert(
                     issuer.registerCredential(subject2, digest1, constants.ZERO_BYTES32, [], { from: registrar2 }),
-                    'Notary/already registered'
+                    'Notary/digest already registered'
                 );
             });
 
@@ -576,7 +576,7 @@ contract('Issuer', accounts => {
 
             it('should return the already aggregated proof', async () => {
                 await issuer.aggregateCredentials(subject1, digests);
-                const storedProof = await issuer.getRootProof(subject1);
+                const storedProof = await issuer.getRoot(subject1);
 
                 const aggregated = await issuer.aggregateCredentials.call(subject1, digests);
 

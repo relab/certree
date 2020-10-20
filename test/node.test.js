@@ -67,7 +67,7 @@ contract('Node', accounts => {
             );
         });
 
-        it('should not add an address that does not implements IssuerInterface', async () => {
+        it('should not add an address that is not a contract', async () => {
             await assertFailure(
                 inner.addChild("0xE11BA2b4D45Eaed5996Cd0823791E0C93114882d", { from: registrar1 })
             );
@@ -173,7 +173,7 @@ contract('Node', accounts => {
 
         it('should aggregate credentials on root contract', async () => {
             await inner.aggregateCredentials(subject, [digest], { from: registrar1 });
-            let rootProof = await inner.getRootProof(subject);
+            let rootProof = await inner.getRoot(subject);
             (rootProof).should.equal(hashByteArray([digest]));
         });
     });
@@ -206,7 +206,8 @@ contract('Node', accounts => {
         it('should successfully verify the root and the valid set of credentials', async () => {
             // Aggregate on root
             await inner.aggregateCredentials(subject, [digest], { from: registrar1 });
-            let rootProof = await inner.getRootProof(subject);
+            // let rootProof = await inner.getRoot(subject);
+            // TODO: Check root proof
 
             (await inner.verifyCredentialTree(subject)).should.equal(true);
         });

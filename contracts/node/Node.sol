@@ -2,15 +2,15 @@
 pragma solidity >=0.7.0 <0.8.0;
 pragma experimental ABIEncoderV2;
 
+import "../ERC165.sol";
 import "../ERC165Checker.sol";
 import "./Node.sol";
 import "./NodeInterface.sol";
 import "../notary/Issuer.sol";
 
-contract Node is NodeInterface, Issuer {
+contract Node is NodeInterface, Issuer, ERC165 {
     bytes4[] private _supportedInterfaces = [
-        type(NodeInterface).interfaceId,
-        type(IssuerInterface).interfaceId
+        type(NodeInterface).interfaceId
     ];
     address immutable internal _parent;
 
@@ -29,15 +29,16 @@ contract Node is NodeInterface, Issuer {
     }
 
     function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
-        return interfaceId == type(ERC165).interfaceId || interfaceId == type(NodeInterface).interfaceId || interfaceId == type(IssuerInterface).interfaceId;
+        return interfaceId == type(ERC165).interfaceId || interfaceId == type(NodeInterface).interfaceId;
     }
 
     /**
-     * @return true if the issuer contract is a leaf false otherwise.
+     * @return true if the contract is a leaf false otherwise.
      */
     function isLeaf() public view override returns (bool) {
         return _role == Role.Leaf;
     }
+
     /**
      * @return the address of the parent of this node
      */
@@ -60,14 +61,21 @@ contract Node is NodeInterface, Issuer {
     }
 
     /**
+     * @param subject The subject of the credential
+     * @return the aggregated root of all credentials of a subject
+     */
+    function getRoot(address subject)
+        public
+        override
+        view
+        returns (bytes32)
+    {
+        return _getRoot(subject);
+    }
+
+    /**
      * @notice addNode adds a contract node to the certification tree.
      * @param nodeAddress The address of the new node to be added
-     * @dev This function checks if the account address implements the
-     * IssuerInterface and NodeInterface, but this is not
-     * sufficient to ensure the correctness of the implementation it_
-     * Malicious contracts that match such interfaces can still
-     * be added and further checks of the contract code should be
-     * performed before approval of the inclusion.
      */
     // FIXME: - require a quorum of owners
     //        - not allow adding node where the sender is an owner of the parent
@@ -89,8 +97,14 @@ contract Node is NodeInterface, Issuer {
 
     /**
      * @notice create a new node on the certification tree
-     * @dev The new node can be a Leaf or a Inner node.
      * @param nodeAddress The address of the node
+     * @dev The new node can be a Leaf or a Inner node.
+     * This function checks if the account address implements the
+     * NodeInterface, but this is not sufficient to ensure the
+     * correctness of the implementation.
+     * Malicious contracts that match such interfaces can still
+     * be added and further checks of the contract code should be
+     * performed before approval of the inclusion.
      */
     function addChild(address nodeAddress)
         public
@@ -127,12 +141,13 @@ contract Node is NodeInterface, Issuer {
         address[] memory witnesses
     )
         public
+        override
         onlyOwner
     // FIXME: the number of witnesses should be bounded to avoid gas limit on loops
     {
         if (_role == Role.Leaf) {
             require(witnesses.length == 0, "Node/Leaf cannot have witnesses");
-            super.registerCredential(
+            _registerCredential(
                 subject,
                 digest,
                 bytes32(0),
@@ -142,35 +157,95 @@ contract Node is NodeInterface, Issuer {
             assert(_role == Role.Inner);
             require(witnesses.length > 0, "Node/witness not found");
             bytes32[] memory witenessProofs = new bytes32[](witnesses.length);
+            // TODO: limit the size of witnesses
             for (uint256 i = 0; i < witnesses.length; i++) {
                 address nodeAddress = address(witnesses[i]);
                 require(
                     isChild[nodeAddress],
                     "Node/address not authorized"
                 );
-                bool success = ERC165Checker.supportsInterface(
+                bool isNodeLike = ERC165Checker.supportsInterface(
                     nodeAddress,
-                    type(IssuerInterface).interfaceId
+                    type(NodeInterface).interfaceId
                 );
-                assert(success);
-                Issuer issuer = Issuer(nodeAddress);
+                assert(isNodeLike);
+                NodeInterface node = NodeInterface(nodeAddress);
                 //TODO: check for re-entrancy
-                bytes32 proof = issuer.getRootProof(subject);
+                bytes32 root = node.getRoot(subject);
                 // TODO: check the time of the creation of the roots on the witnesses? And only allow roots that have a order between them.
+                // bytes32 proof = node.getProof(subject);
                 // i.e. root[subject].insertedBlock and root[subject].blockTimestamp
-                require(proof != bytes32(0), "Node/root not found");
-                witenessProofs[i] = proof;
+                require(root != bytes32(0), "Node/root not found");
+                witenessProofs[i] = root;
             }
             // FIXME: Not allow reuse of witness at same contract? keep a map of witnesses?
             // FIXME: consider use sha256(abi.encodePacked(roots, digests));
             bytes32 evidenceRoot = CredentialSum.computeRoot(witenessProofs);
-            super.registerCredential(
+            _registerCredential(
                 subject,
                 digest,
                 evidenceRoot,
                 witnesses
             );
         }
+    }
+
+    /**
+     * @notice confirms the emission of a quorum signed credential proof
+     * @param digest The digest of the credential
+     */
+    function confirmCredential(bytes32 digest)
+        public
+        override
+    {
+        _confirmCredential(digest);
+    }
+
+    /**
+     * @notice revokes a credential for a given reason
+     * based on it's digest.
+     * @param digest The digest of the credential
+     * @param reason The hash of the reason of the revocation
+     * @dev The reason should be publicaly available for anyone to inspect
+     * i.e. Stored in a public swarm/ipfs address
+     */
+    function revokeCredential(bytes32 digest, bytes32 reason)
+        public
+        override
+        onlyOwner
+    {
+        _revokeCredential(digest, reason);
+    }
+
+    /**
+     * @notice aggregates the digests of a given
+     * subject.
+     * @param subject The subject of which the credentials will be aggregate
+     * @param digests The list of credentials' digests
+     */
+    function aggregateCredentials(address subject, bytes32[] memory digests)
+        public
+        override
+        onlyOwner
+        returns (bytes32)
+    {
+        _aggregateCredentials(subject, digests);
+    }
+
+    // TODO: move verification to another contract
+    /**
+     * @notice checks whether the root exists
+     * and was correctly built based on the existent tree.
+     * @param subject The subject of the credential tree
+     * @param root The root to be checked.
+     */
+    function verifyCredentialRoot(address subject, bytes32 root)
+        public
+        override
+        view
+        returns (bool)
+    {
+        return _verifyCredentialRoot(subject, root);
     }
 
     /**
@@ -248,14 +323,8 @@ contract Node is NodeInterface, Issuer {
             assert(isNodeLike);
             NodeInterface node = NodeInterface(witnessesAddress);
             if (node.isLeaf()) {
-                bool isIssuerLike = ERC165Checker.supportsInterface(
-                    witnessesAddress,
-                    type(IssuerInterface).interfaceId
-                );
-                assert(isIssuerLike);
-                IssuerInterface issuer = IssuerInterface(witnessesAddress);
-                proofs[i] = issuer.getRootProof(subject);
-                if (!issuer.verifyCredentialRoot(subject, proofs[i])) {
+                proofs[i] = node.getRoot(subject);
+                if (!node.verifyCredentialRoot(subject, proofs[i])) {
                     return false;
                 }
             } else {

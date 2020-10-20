@@ -134,7 +134,7 @@ async function generateLeafCredentials(leaves, subjects, n) {
 // return hashByteArray(bytes32[]) performed by the contract
 async function aggregateLeaf(leafContract, owner, subject, certs) {
     await leafContract.aggregateCredentials(subject, certs, { from: owner });
-    return await leafContract.getRootProof(subject);
+    return await leafContract.getRoot(subject);
 };
 
 // returns [ hashByteArray(bytes32[]), bytes32[] ]
