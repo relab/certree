@@ -36,12 +36,12 @@ contract('Issuer', accounts => {
         before(async () => {
             issuer1 = await Issuer.new([registrar1], 1);
             await issuer1.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar1 });
-            await issuer1.confirmCredential(digest1, { from: subject1 });
+            await issuer1.approveCredential(digest1, { from: subject1 });
 
             await time.increase(time.duration.seconds(1));
 
             await issuer1.registerCredential(subject1, digest2, constants.ZERO_BYTES32, [], { from: registrar1 });
-            await issuer1.confirmCredential(digest2, { from: subject1 });
+            await issuer1.approveCredential(digest2, { from: subject1 });
 
             await issuer1.aggregateCredentials(subject1, [digest1, digest2], { from: registrar1 });
             timestamp = await time.latest();
@@ -282,7 +282,7 @@ contract('Issuer', accounts => {
                 (credential.approved).should.equal(false);
 
                 await expectRevert(
-                    issuer.confirmCredential(digest1, { from: subject1 }),
+                    issuer.approveCredential(digest1, { from: subject1 }),
                     'Notary/no quorum of signatures'
                 );
             });
@@ -292,24 +292,24 @@ contract('Issuer', accounts => {
                 await issuer.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar2 });
 
                 await expectRevert(
-                    issuer.confirmCredential(digest1, { from: subject2 }),
+                    issuer.approveCredential(digest1, { from: subject2 }),
                     'Notary/wrong subject'
                 );
             });
 
             it('should not allow a subject to confirm twice the same credential proof', async () => {
                 await issuer.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar2 });
-                await issuer.confirmCredential(digest1, { from: subject1 });
+                await issuer.approveCredential(digest1, { from: subject1 });
 
                 await expectRevert(
-                    issuer.confirmCredential(digest1, { from: subject1 }),
+                    issuer.approveCredential(digest1, { from: subject1 }),
                     'Notary/credential already signed'
                 );
             });
 
             it('should mark a credential as approved when it was signed by a quorum of registrars and by the subject', async () => {
                 await issuer.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar2 });
-                await issuer.confirmCredential(digest1, { from: subject1 });
+                await issuer.approveCredential(digest1, { from: subject1 });
 
                 const credential = await issuer.getCredentialProof(digest1);
                 (credential.approved).should.equal(true);
@@ -320,7 +320,7 @@ contract('Issuer', accounts => {
 
                 (await issuer.isApproved(digest1)).should.equal(false);
 
-                await issuer.confirmCredential(digest1, { from: subject1 });
+                await issuer.approveCredential(digest1, { from: subject1 });
 
                 (await issuer.isApproved(digest1)).should.equal(true);
             });
@@ -356,7 +356,7 @@ contract('Issuer', accounts => {
                     signedBlock: lastBlockNumber
                 });
 
-                ({ logs } = await issuer.confirmCredential(digest1, { from: subject1 }));
+                ({ logs } = await issuer.approveCredential(digest1, { from: subject1 }));
                 lastBlockNumber = await time.latestBlock();
                 expectEvent.inLogs(logs, 'CredentialSigned', {
                     signer: subject1,
@@ -437,7 +437,7 @@ contract('Issuer', accounts => {
                 (await issuer.isRevoked(digest1)).should.equal(true);
 
                 await expectRevert(
-                    issuer.confirmCredential(digest1, { from: subject1 }),
+                    issuer.approveCredential(digest1, { from: subject1 }),
                     'Issuer/credential revoked'
                 );
                 (await issuer.isApproved(digest1)).should.equal(false);
@@ -491,7 +491,7 @@ contract('Issuer', accounts => {
             issuer = await Issuer.new([registrar1], 1);
             for (d of digests) {
                 await issuer.registerCredential(subject1, d, constants.ZERO_BYTES32, [], { from: registrar1 });
-                await issuer.confirmCredential(d, { from: subject1 });
+                await issuer.approveCredential(d, { from: subject1 });
                 await time.increase(time.duration.seconds(1));
 
                 (await issuer.isApproved(d)).should.equal(true);
@@ -557,7 +557,7 @@ contract('Issuer', accounts => {
             beforeEach(async () => {
                 for (d of digests) {
                     await issuer.registerCredential(subject1, d, constants.ZERO_BYTES32, [], { from: registrar1 });
-                    await issuer.confirmCredential(d, { from: subject1 });
+                    await issuer.approveCredential(d, { from: subject1 });
                     await time.increase(time.duration.seconds(1));
 
                     (await issuer.isApproved(d)).should.equal(true);
@@ -606,7 +606,7 @@ contract('Issuer', accounts => {
                     'Issuer/there are no credentials'
                 );
 
-                await issuer.confirmCredential(digest1, { from: subject1 });
+                await issuer.approveCredential(digest1, { from: subject1 });
                 (await issuer.isApproved(digest1)).should.equal(true);
             });
 
@@ -620,7 +620,7 @@ contract('Issuer', accounts => {
 
         it('should return the credential hash if only one credential exists', async () => {
             await issuer.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar1 });
-            await issuer.confirmCredential(digest1, { from: subject1 });
+            await issuer.approveCredential(digest1, { from: subject1 });
 
             const aggregated = await issuer.aggregateCredentials.call(subject1, [digest1]);
             let expected = hashByteArray([digest1]);
@@ -641,7 +641,7 @@ contract('Issuer', accounts => {
             beforeEach(async () => {
                 for (d of digests) {
                     await issuer.registerCredential(subject1, d, constants.ZERO_BYTES32, [], { from: registrar1 });
-                    await issuer.confirmCredential(d, { from: subject1 });
+                    await issuer.approveCredential(d, { from: subject1 });
                     await time.increase(time.duration.seconds(1));
                 }
                 await issuer.aggregateCredentials(subject1, digests);
@@ -666,7 +666,7 @@ contract('Issuer', accounts => {
 
             it('should revert if there is no root to be verified for a given subject', async () => {
                 await issuer.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar1 });
-                await issuer.confirmCredential(digest1, { from: subject1 });
+                await issuer.approveCredential(digest1, { from: subject1 });
                 await time.increase(time.duration.seconds(1));
                 await expectRevert(
                     issuer.verifyCredentialRoot(subject1, constants.ZERO_BYTES32),

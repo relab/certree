@@ -231,10 +231,10 @@ abstract contract Issuer is Owners {
     }
 
     /**
-     * @notice confirms the emission of a quorum signed credential proof
+     * @notice approves the emission of a quorum signed credential proof
      * @param digest The digest of the credential
      */
-    function _confirmCredential(bytes32 digest) internal notRevoked(digest) {
+    function _approveCredential(bytes32 digest) internal notRevoked(digest) {
         require(quorum() > 0,"Issuer/no quorum found");
         require(_tree._approve(digest, quorum()), "Issuer/approval failed");
     }
@@ -261,7 +261,7 @@ abstract contract Issuer is Owners {
         notRevoked(digest)
     {
         address subject = _tree.records[digest].subject;
-        require(isOwner[msg.sender] || subject == msg.sender, "Issuer/sender not authorized");
+        require(isOwner(msg.sender) || subject == msg.sender, "Issuer/sender not authorized");
         _tree._revoke(digest, reason);
     }
 
@@ -377,7 +377,7 @@ abstract contract Issuer is Owners {
         onlyOwner
         notRevoked(digest)
     {
-        require(!isOwner[subject], "Issuer/forbidden registrar");
+        require(!isOwner(subject), "Issuer/forbidden registrar");
         _tree._issue(subject, digest, eRoot, witnesses);
     }
 }

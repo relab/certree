@@ -19,13 +19,13 @@ contract Owners {
     address[] internal _owners;
 
     // Map of owners
-    mapping(address => bool) public isOwner;
+    mapping(address => bool) private _isOwner;
 
     // Logged when any owner change.
     event OwnerChanged(address indexed oldOwner, address indexed newOwner);
 
     modifier onlyOwner {
-        require(isOwner[msg.sender], "Owners/sender is not an owner");
+        require(_isOwner[msg.sender], "Owners/sender is not an owner");
         _;
     }
 
@@ -45,8 +45,8 @@ contract Owners {
         );
         for (uint8 i = 0; i < ownersList.length; ++i) {
             // prevent duplicate and zero value address attack
-            assert(!isOwner[ownersList[i]] && ownersList[i] != address(0x0));
-            isOwner[ownersList[i]] = true;
+            assert(!_isOwner[ownersList[i]] && ownersList[i] != address(0x0));
+            _isOwner[ownersList[i]] = true;
         }
         _owners = ownersList;
         _ownersCount = uint8(ownersList.length);
@@ -76,6 +76,13 @@ contract Owners {
     }
 
     /**
+     * @return checks whether an account is owner
+     */
+    function isOwner(address account) public view returns(bool) {
+        return _isOwner[account];
+    }
+
+    /**
      * @return the total number of owners
      */
     function ownersCount()
@@ -93,7 +100,7 @@ contract Owners {
      */
     function changeOwner(address newOwner) public onlyOwner {
         require(
-            !isOwner[newOwner] && newOwner != address(0x0),
+            !_isOwner[newOwner] && newOwner != address(0x0),
             "Owners/invalid address given"
         );
         // Owners should never be empty
@@ -111,8 +118,8 @@ contract Owners {
         assert(ownersList.length == _quorum);
         emit OwnerChanged(msg.sender, newOwner);
         _owners = ownersList;
-        isOwner[newOwner] = true;
-        isOwner[msg.sender] = false;
+        _isOwner[newOwner] = true;
+        _isOwner[msg.sender] = false;
     }
 
     // TODO: add and remove owners

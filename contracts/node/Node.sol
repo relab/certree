@@ -191,14 +191,14 @@ contract Node is NodeInterface, Issuer, ERC165 {
     }
 
     /**
-     * @notice confirms the emission of a quorum signed credential proof
+     * @notice approves the emission of a quorum signed credential proof
      * @param digest The digest of the credential
      */
-    function confirmCredential(bytes32 digest)
+    function approveCredential(bytes32 digest)
         public
         override
     {
-        _confirmCredential(digest);
+        _approveCredential(digest);
     }
 
     /**
@@ -229,7 +229,7 @@ contract Node is NodeInterface, Issuer, ERC165 {
         onlyOwner
         returns (bytes32)
     {
-        _aggregateCredentials(subject, digests);
+        return _aggregateCredentials(subject, digests);
     }
 
     // TODO: move verification to another contract

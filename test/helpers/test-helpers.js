@@ -63,7 +63,7 @@ async function generateNodeCredentials(nodes, witnessesPerSubject, n) {
                     await nodeContract.registerCredential(w.subject, certificateDigest, w.witnesses, { from: owner });
                     await time.increase(time.duration.seconds(1));
                 }
-                await nodeContract.confirmCredential(certificateDigest, { from: w.subject });
+                await nodeContract.approveCredential(certificateDigest, { from: w.subject });
                 await time.increase(time.duration.seconds(1));
                 (await nodeContract.certified(certificateDigest)).should.equal(true);
             }
@@ -119,7 +119,7 @@ async function generateLeafCredentials(leaves, subjects, n) {
                     await leafContract.registerCredential(subject, certificateDigest, [], { from: owner });
                     await time.increase(time.duration.seconds(1));
                 }
-                await leafContract.confirmCredential(certificateDigest, { from: subject });
+                await leafContract.approveCredential(certificateDigest, { from: subject });
                 await time.increase(time.duration.seconds(1));
                 (await leafContract.isApproved(certificateDigest)).should.equal(true);
             }

@@ -125,7 +125,7 @@ contract('Node', accounts => {
 
             await inner.registerCredential(subject, digest, wAddresses, { from: registrar2 });
 
-            await inner.confirmCredential(digest, { from: subject });
+            await inner.approveCredential(digest, { from: subject });
 
             (await inner.isApproved(digest)).should.equal(true);
         });
@@ -168,7 +168,7 @@ contract('Node', accounts => {
 
             await inner.registerCredential(subject, digest, wAddresses, { from: registrar1 });
 
-            await inner.confirmCredential(digest, { from: subject });
+            await inner.approveCredential(digest, { from: subject });
         });
 
         it('should aggregate credentials on root contract', async () => {
@@ -196,7 +196,7 @@ contract('Node', accounts => {
             // generate root credential
             wAddresses = Object.keys(witnesses);
             await inner.registerCredential(subject, digest, wAddresses, { from: registrar1 });
-            await inner.confirmCredential(digest, { from: subject });
+            await inner.approveCredential(digest, { from: subject });
         });
 
         it('should successfully verify a valid set of credentials', async () => {
@@ -234,7 +234,7 @@ contract('Node', accounts => {
             // generate root credential
             wAddresses = Object.keys(witnesses);
             await inner.registerCredential(subject, digest, wAddresses, { from: registrar1 });
-            await inner.confirmCredential(digest, { from: subject });
+            await inner.approveCredential(digest, { from: subject });
         });
 
         it('should successfully create a root revocation proof', async () => {

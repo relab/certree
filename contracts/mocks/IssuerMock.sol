@@ -60,8 +60,8 @@ contract IssuerMock is Issuer {
         return _aggregateCredentials(subject, digests);
     }
 
-    function confirmCredential(bytes32 digest) public {
-        _confirmCredential(digest);
+    function approveCredential(bytes32 digest) public {
+        _approveCredential(digest);
     }
 
     function revokeCredential(bytes32 digest, bytes32 reason) public {

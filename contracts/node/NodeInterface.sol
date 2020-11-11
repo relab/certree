@@ -57,10 +57,10 @@ interface NodeInterface {
         returns (bool);
 
     /**
-     * @notice confirms the emission of a quorum signed credential proof
+     * @notice approves the emission of a quorum signed credential proof
      * @param digest The digest of the credential
      */
-    function confirmCredential(bytes32 digest) external;
+    function approveCredential(bytes32 digest) external;
 
     /**
      * @notice registers a credential proof ensuring an append-only property
