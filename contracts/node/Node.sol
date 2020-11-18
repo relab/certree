@@ -262,7 +262,7 @@ contract Node is NodeInterface, Issuer, ERC165 {
         returns (bool)
     {
         bytes32[] memory digests = getDigests(subject);
-        assert(digests.length > 0);
+        require(digests.length > 0, "Node/credential not found");
         // Verify local root if exists
         if (hasRoot(subject)) {
             if (!verifyRootOf(subject, digests)) {

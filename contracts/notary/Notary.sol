@@ -113,7 +113,7 @@ library Notary {
         view
         returns (bool)
     {
-        return self.records[digest].digest != bytes32(0);
+        return self.records[digest].insertedBlock != 0;
     }
 
     /**
@@ -278,10 +278,7 @@ library Notary {
         bytes32 digest,
         bytes32 reason
     ) internal {
-        require(
-            self.records[digest].insertedBlock != 0,
-            "Notary/credential not found"
-        );
+        require(recordExists(self, digest), "Notary/credential not found");
         address subject = self.records[digest].subject;
         require(subject != address(0), "Notary/subject cannot be zero");
         ++self.revokedCounter[subject];
@@ -324,10 +321,7 @@ library Notary {
         address subject,
         bytes32 digest
     ) internal view returns (bool) {
-        require(
-            self.records[digest].insertedBlock != 0,
-            "Notary/credential not found"
-        );
+        require(recordExists(self, digest), "Notary/credential not found");
         require(
             self.records[digest].subject == subject,
             "Notary/not owned by subject"
