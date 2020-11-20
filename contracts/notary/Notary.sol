@@ -196,11 +196,11 @@ library Notary {
                     c.insertedBlock < block.number,
                     "Notary/block number violation"
                 );
-                require(
-                    // solhint-disable-next-line not-rely-on-time
-                    c.blockTimestamp < block.timestamp,
-                    "Notary/timestamp violation"
-                );
+                // require(
+                //     // solhint-disable-next-line not-rely-on-time
+                //     c.blockTimestamp < block.timestamp,
+                //     "Notary/timestamp violation"
+                // );
             }
             self.records[digest] = CredentialProof(
                 1,

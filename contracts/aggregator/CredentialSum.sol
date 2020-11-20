@@ -2,7 +2,6 @@
 pragma solidity >=0.7.0 <0.8.0;
 
 library CredentialSum {
-
     // Root represents the result of the aggregation of all
     // subject's credential digests on the contract state
     struct Root {
@@ -19,8 +18,8 @@ library CredentialSum {
         uint256 aggregatedBlock
     );
 
-    modifier existsRoot(Root storage self) {
-        require(self.proof != bytes32(0), "CredentialSum/proof not exists");
+    modifier rootExists(Root storage self) {
+        require(hasRoot(self), "CredentialSum/proof not exists");
         //TODO: if is != zero, then use it as input too in the aggregation
         _;
     }
@@ -30,28 +29,20 @@ library CredentialSum {
         _;
     }
 
-    function getRoot(Root storage self)
-        public
-        pure
-        returns (Root storage)
-    {
+    function getRoot(Root storage self) public pure returns (Root storage) {
         return self;
     }
 
-    function hasRoot(Root storage self)
-        public
-        view
-        returns (bool)
-    {
+    function hasRoot(Root storage self) public view returns (bool) {
         return self.proof != bytes32(0);
     }
 
     // Aggregate credentials and produce a proof of it
-    function generateRoot(Root storage self, address subject, bytes32[] memory digests)
-        public
-        notEmpty(digests)
-        returns (bytes32)
-    {
+    function generateRoot(
+        Root storage self,
+        address subject,
+        bytes32[] memory digests
+    ) public notEmpty(digests) returns (bytes32) {
         //TODO: if (self.proof != bytes32(0)) append to it
         bytes32 root = computeRoot(digests);
         self.proof = root;
@@ -80,7 +71,7 @@ library CredentialSum {
     function verifySelfRoot(Root storage self, bytes32[] memory digests)
         public
         view
-        existsRoot(self)
+        rootExists(self)
         returns (bool)
     {
         return (self.proof == computeRoot(digests));

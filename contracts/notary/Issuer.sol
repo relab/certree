@@ -298,10 +298,8 @@ abstract contract Issuer is Owners {
         hasIssuedCredentials(subject)
         returns (bool)
     {
-        require(_root[subject].hasRoot(), "Issuer/root not found");
         // Stored root must be derived from current digests of the subject
-        assert(_root[subject].verifySelfRoot(_tree.issued[subject]));
-        return _root[subject].proof == root;
+        return _root[subject].verifySelfRoot(_tree.issued[subject]) && _root[subject].proof == root;
     }
 
     /**
@@ -309,8 +307,7 @@ abstract contract Issuer is Owners {
      * of a given subject are valid.
      * @param subject The subject of the credential
      * @dev This function checks over all issued credentials if there is
-     * any credentials there was not approved, but it ignores any 
-     * revoked credential.
+     * any credentials there was not approved.
      */
     // TODO: Add period verification
     function verifyIssuedCredentials(address subject)
