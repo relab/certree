@@ -1,50 +1,55 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.0 <0.8.0;
-// pragma experimental ABIEncoderV2;
+pragma solidity >=0.7.0 <0.8.0;
+pragma experimental ABIEncoderV2;
 
-import "./Issuer.sol";
+import "./notary/Issuer.sol";
 import "./Timed.sol";
 
 /**
  * @title An Issuer Implementation
  */
 contract TimedIssuer is Timed, Issuer {
+
     /**
-    * @dev Constructor creates a Issuer contract
+    * @notice Constructor creates a Issuer contract
     */
     constructor(
         address[] memory owners,
-        uint256 quorum,
+        uint8 quorum,
         uint256 startingTime,
         uint256 endingTime
-    ) Issuer(owners, quorum, true) Timed(startingTime, endingTime) {
+    )
+        Timed(startingTime, endingTime)
+        Issuer(owners, quorum)
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     // TODO: add tests for extenting time
-    function extendTime(uint256 NewEndingTime) public onlyOwner {
-        _extendTime(NewEndingTime);
+    function extendTime(uint256 newEndingTime) public onlyOwner {
+        _extendTime(newEndingTime);
     }
 
     /**
-     * @dev issue a credential proof for enrolled students
+     * @notice register a credential prooffor a given subject
      */
-    function registerCredential(address student, bytes32 digest)
+    function registerCredential(address subject, bytes32 digest)
         public
-        override
         onlyOwner
         whileNotEnded
     {
-        super.registerCredential(student, digest);
+        _registerCredential(subject, digest, bytes32(0), new address[](0));
     }
 
-    // FIXME: only allow onwer to call the aggregation? If so, the faculty contract will not be able to call the method, and the teacher will need to call it
-    function aggregateCredentials(address student)
+    /**
+     * @notice generate the root for a given subject
+     */
+    function aggregateCredentials(address subject, bytes32[] memory digests)
         public
-        override
+        onlyOwner
         returns (bytes32)
     {
-        require(hasEnded(), "IssuerImpl: IssuerImpl not ended yet");
-        return super.aggregateCredentials(student);
+        require(hasEnded(), "TimedIssuer/period not ended yet");
+        return _aggregateCredentials(subject, digests);
     }
 }

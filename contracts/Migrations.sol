@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity >=0.7.0 <0.8.0;
 
 contract Migrations {
     address public owner;
     // solhint-disable-next-line var-name-mixedcase
-    uint256 public last_completed_migration;
+    uint256 public lastCompletedMigration;
 
     constructor() {
         owner = msg.sender;
@@ -15,11 +15,11 @@ contract Migrations {
     }
 
     function setCompleted(uint256 completed) public restricted {
-        last_completed_migration = completed;
+        lastCompletedMigration = completed;
     }
 
-    function upgrade(address new_address) public restricted {
-        Migrations upgraded = Migrations(new_address);
-        upgraded.setCompleted(last_completed_migration);
+    function upgrade(address newAddress) public restricted {
+        Migrations upgraded = Migrations(newAddress);
+        upgraded.setCompleted(lastCompletedMigration);
     }
 }

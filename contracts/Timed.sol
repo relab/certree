@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity >=0.7.0 <0.8.0;
 
 // import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /**
  * @title Timed
- * @dev Limits the contract actions based on a time interval.
+ * @notice Limits the contract actions based on a time interval.
  */
 abstract contract Timed {
     // using SafeMath for uint256;
@@ -17,15 +17,15 @@ abstract contract Timed {
      * @param newEndingTime new ending time
      * @param prevEndingTime old ending time
      */
-    event IssuerPeriodExtended(uint256 prevEndingTime, uint256 newEndingTime);
+    event PeriodExtended(uint256 prevEndingTime, uint256 newEndingTime);
 
     /**
-     * @dev Reverts if not in Issuer time range.
+     * @notice Reverts if not in Issuer time range.
      */
     modifier onlyAfterStart {
         require(
             isStarted(),
-            "Timed: the notarization period didn't start yet"
+            "Timed/period not started yet"
         );
         _;
     }
@@ -33,26 +33,24 @@ abstract contract Timed {
     modifier whileNotEnded {
         require(
             stillRunning(),
-            "Timed: the notarization period has already ended"
+            "Timed/period has already ended"
         );
         _;
     }
 
     /**
-     * @dev Constructor, takes Issuer starting and ending times.
      * @param startingTime Issuer starting time
      * @param endingTime Issuer ending time
      */
     constructor(uint256 startingTime, uint256 endingTime) {
-        // solhint-disable-next-line not-rely-on-time
         require(
+            // solhint-disable-next-line not-rely-on-time
             startingTime >= block.timestamp,
-            "Timed: starting time cannot be in the past"
+            "Timed/time in the past"
         );
-        // solhint-disable-next-line max-line-length
         require(
             endingTime > startingTime,
-            "Timed: ending time cannot be smaller than starting time"
+            "Timed/wrong time range"
         );
 
         _startingTime = startingTime;
@@ -82,7 +80,7 @@ abstract contract Timed {
     }
 
     /**
-     * @dev Checks whether the notarization period has already elapsed.
+     * @notice Checks whether the notarization period has already elapsed.
      * @return Whether Issuer period has elapsed
      */
     function hasEnded() public view returns (bool) {
@@ -99,17 +97,16 @@ abstract contract Timed {
     }
 
     /**
-     * @dev Extend the notarization time.
+     * @notice Extend the notarization time.
      * @param newEndingTime the new Issuer ending time
      */
     function _extendTime(uint256 newEndingTime) internal whileNotEnded {
-        // solhint-disable-next-line max-line-length
         require(
             newEndingTime > _endingTime,
-            "Timed: new ending time is before current ending time"
+            "Timed/wrong time range"
         );
 
-        emit IssuerPeriodExtended(_endingTime, newEndingTime);
+        emit PeriodExtended(_endingTime, newEndingTime);
         _endingTime = newEndingTime;
     }
 }
