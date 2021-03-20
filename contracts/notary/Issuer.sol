@@ -15,12 +15,12 @@ import "./Notary.sol";
 // TODO: make issuer a library
 abstract contract Issuer is Owners {
     using Notary for Notary.CredentialTree;
-    Notary.CredentialTree _tree;
+    Notary.CredentialTree internal _tree;
 
     //TODO: define aggregator interface
     // Aggregator aggregator;
     using CredentialSum for CredentialSum.Root;
-    mapping(address => CredentialSum.Root) _root;
+    mapping(address => CredentialSum.Root) internal _root;
 
     // Logged when a credential is issued/created.
     event CredentialIssued(
@@ -281,7 +281,7 @@ abstract contract Issuer is Owners {
         // FIXME: the number of digests should be bounded to avoid gas limit on loops
         require(
             _tree._verifyProofs(subject, digests),
-            "Issuer/contains invalid credentials"
+            "Issuer/has invalid credentials"
         );
         return _root[subject].generateRoot(subject, digests);
     }
