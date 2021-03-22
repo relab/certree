@@ -27,7 +27,6 @@
   },
   "author": "Rodrigo Q. Saramago",
   "license": "MIT",
-  "dependencies": {},
   "devDependencies": {
     "@openzeppelin/contracts": "^3.1.0",
     "@openzeppelin/test-helpers": "^0.5.6",

@@ -28,11 +28,11 @@ contract('Owners', accounts => {
         });
 
         it('should not allow duplicated owners addresses', async () => {
-            await expectRevert.assertion(Owners.new([owner1, owner1], 2));
+            await expectRevert.unspecified(Owners.new([owner1, owner1], 2));
         });
 
         it('should not allow zero address for owner', async () => {
-            await expectRevert.assertion(Owners.new([owner1, constants.ZERO_ADDRESS], 2));
+            await expectRevert.unspecified(Owners.new([owner1, constants.ZERO_ADDRESS], 2));
         });
     });
 

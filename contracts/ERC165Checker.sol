@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-// Copy from: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/introspection/ERC165Checker.sol
-pragma solidity >=0.7.0 <0.8.0;
+// Copied from: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/introspection/ERC165Checker.sol
+pragma solidity >=0.8.0 <0.9.0;
 
 /**
  * @dev Library used to query support of an interface declared via {IERC165}.

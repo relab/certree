@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.7.0 <0.8.0;
+pragma solidity >=0.8.0 <0.9.0;
 
 // import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -39,22 +39,22 @@ abstract contract Timed {
     }
 
     /**
-     * @param startingTime Issuer starting time
-     * @param endingTime Issuer ending time
+     * @param startTime Issuer starting time
+     * @param endTime Issuer ending time
      */
-    constructor(uint256 startingTime, uint256 endingTime) {
+    constructor(uint256 startTime, uint256 endTime) {
         require(
             // solhint-disable-next-line not-rely-on-time
-            startingTime >= block.timestamp,
+            startTime >= block.timestamp,
             "Timed/time in the past"
         );
         require(
-            endingTime > startingTime,
+            endTime > startTime,
             "Timed/wrong time range"
         );
 
-        _startingTime = startingTime;
-        _endingTime = endingTime;
+        _startingTime = startTime;
+        _endingTime = endTime;
     }
 
     /**
