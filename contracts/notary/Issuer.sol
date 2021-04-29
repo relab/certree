@@ -10,7 +10,7 @@ import "./Notary.sol";
  * issued by untrusted issuers, discouraging fraudulent processes by
  * establishing a casual order between the credential proofs.
  */
- // TODO: Allow upgradeable contract using similar approach of https://github.com/PeterBorah/ether-router
+// TODO: Allow upgradeable contract using similar approach of https://github.com/PeterBorah/ether-router
 // TODO: make issuer a library
 abstract contract Issuer is Owners {
     using Notary for Notary.CredentialTree;
@@ -46,10 +46,7 @@ abstract contract Issuer is Owners {
     );
 
     modifier notRevoked(bytes32 digest) {
-        require(
-            !isRevoked(digest),
-            "Issuer/credential revoked"
-        );
+        require(!isRevoked(digest), "Issuer/credential revoked");
         _;
     }
 
@@ -116,8 +113,8 @@ abstract contract Issuer is Owners {
         returns (address[] memory)
     {
         address[] memory signers = new address[](_owners.length);
-        uint index = 0;
-        uint i = 0;
+        uint256 index = 0;
+        uint256 i = 0;
         for (; i < _owners.length; i++) {
             if (_tree.credentialSigners[digest][_owners[i]]) {
                 signers[index] = _owners[i];
@@ -131,7 +128,11 @@ abstract contract Issuer is Owners {
      * @notice verify if a credential proof was signed by a quorum
      * @param digest The digest of the credential
      */
-    function isQuorumSigned(bytes32 digest) public view returns(bool) {
+    function isQuorumSigned(bytes32 digest)
+        public
+        view
+        returns (bool)
+    {
         return _tree.isQuorumSigned(digest, _quorum);
     }
 
@@ -141,7 +142,11 @@ abstract contract Issuer is Owners {
      * @param digest The digest of the credential
      * @param account The registrar's account
      */
-    function isSigned(bytes32 digest, address account) public view returns(bool) {
+    function isSigned(bytes32 digest, address account)
+        public
+        view
+        returns (bool)
+    {
         return _tree.isSigned(digest, account);
     }
 
@@ -149,7 +154,11 @@ abstract contract Issuer is Owners {
      * @param digest The digest of the credential
      * @return the length of the witnesses of an issued credential proof
      */
-    function witnessesLength(bytes32 digest) public view returns(uint256) {
+    function witnessesLength(bytes32 digest)
+        public
+        view
+        returns (uint256)
+    {
         return _tree.records[digest].witnesses.length;
     }
 
@@ -157,7 +166,11 @@ abstract contract Issuer is Owners {
      * @param digest The digest of the credential
      * @return the witnesses of an issued credential proof
      */
-    function getWitnesses(bytes32 digest) public view returns(address[] memory){
+    function getWitnesses(bytes32 digest)
+        public
+        view
+        returns (address[] memory)
+    {
         return _tree.records[digest].witnesses;
     }
 
@@ -165,10 +178,14 @@ abstract contract Issuer is Owners {
      * @param digest The digest of the credential
      * @return the root of the evidences of an issued credential proof.
      */
-    function getEvidenceRoot(bytes32 digest) public view returns (bytes32) {
+    function getEvidenceRoot(bytes32 digest)
+        public
+        view
+        returns (bytes32)
+    {
         return _tree.records[digest].evidenceRoot;
     }
-    
+
     /**
      * @param subject The subject of the credential
      * @return the aggregated root of all credentials of a subject
@@ -181,10 +198,14 @@ abstract contract Issuer is Owners {
      * @param subject The subject of the credential
      * @return the root proof of a subject in this contract
      */
-     // TODO: Implement it as a token?
-     // TODO: Return an aggregator interface
-     // TODO: Rename function
-    function getProof(address subject) public view returns (CredentialSum.Root memory) {
+    // TODO: Implement it as a token?
+    // TODO: Return an aggregator interface
+    // TODO: Rename function
+    function getProof(address subject)
+        public
+        view
+        returns (CredentialSum.Root memory)
+    {
         return _root[subject];
     }
 
@@ -210,8 +231,7 @@ abstract contract Issuer is Owners {
      * @notice check whether the root exists
      * @param subject The subject of the credential tree
      */
-    function hasRoot(address subject) public view returns (bool)
-    {
+    function hasRoot(address subject) public view returns (bool) {
         return _root[subject].hasRoot();
     }
 
@@ -221,6 +241,7 @@ abstract contract Issuer is Owners {
      * @param digests The list of digests of the subject
      */
     // TODO: limit the size of digests to avoid out-of-gas
+    // TODO: specify implementation of verifier interface
     function verifyRootOf(address subject, bytes32[] memory digests)
         public
         view
@@ -234,7 +255,7 @@ abstract contract Issuer is Owners {
      * @param digest The digest of the credential
      */
     function _approveCredential(bytes32 digest) internal notRevoked(digest) {
-        require(quorum() > 0,"Issuer/no quorum found");
+        require(quorum() > 0, "Issuer/no quorum found");
         require(_tree._approve(digest, quorum()), "Issuer/approval failed");
     }
 
@@ -254,13 +275,16 @@ abstract contract Issuer is Owners {
      * @dev The reason should be publicaly available for anyone to inspect
      * i.e. Stored in a public swarm/ipfs address
      */
-     // TODO: require quorum
+    // TODO: require quorum modifier
     function _revokeCredential(bytes32 digest, bytes32 reason)
         internal
         notRevoked(digest)
     {
         address subject = _tree.records[digest].subject;
-        require(isOwner(msg.sender) || subject == msg.sender, "Issuer/sender not authorized");
+        require(
+            isOwner(msg.sender) || subject == msg.sender,
+            "Issuer/sender not authorized"
+        );
         _tree._revoke(digest, reason);
     }
 
@@ -298,7 +322,9 @@ abstract contract Issuer is Owners {
         returns (bool)
     {
         // Stored root must be derived from current digests of the subject
-        return _root[subject].verifySelfRoot(_tree.issued[subject]) && _root[subject].proof == root;
+        return
+            _root[subject].verifySelfRoot(_tree.issued[subject]) &&
+            _root[subject].proof == root;
     }
 
     /**
@@ -333,7 +359,10 @@ abstract contract Issuer is Owners {
         return _tree._verifyCredential(subject, digest);
     }
 
-    // Returns a list of revoked credentials
+    /**
+     * @notice returns a list of revoked credentials
+     * @param subject The subject that owns the credentials
+     */
     function getRevoked(address subject)
         public
         view
@@ -341,8 +370,8 @@ abstract contract Issuer is Owners {
         returns (bytes32[] memory)
     {
         bytes32[] memory revoked = new bytes32[](_tree.revokedCounter[subject]);
-        uint index = 0;
-        uint i = 0;
+        uint256 index = 0;
+        uint256 i = 0;
         for (; i < _tree.issued[subject].length; i++) {
             if (isRevoked(_tree.issued[subject][i])) {
                 revoked[index] = _tree.issued[subject][i];
@@ -352,8 +381,15 @@ abstract contract Issuer is Owners {
         return revoked;
     }
 
-
-    function revokedCounter(address subject) public view returns(uint256) {
+    /**
+     * @notice returns the number of revoked credentials for a subject
+     * @param subject The subject that owns the credentials
+     */
+    function revokedCounter(address subject)
+        public
+        view
+        returns (uint256)
+    {
         return _tree.revokedCounter[subject];
     }
 
@@ -368,11 +404,12 @@ abstract contract Issuer is Owners {
     // Use `extcodesize` can be tricky since it will also return 0 for the constructor method of a contract, but it seems that isn't a problem in this context, since it isn't being used to prevent any action.
     // TODO: improve the quorum check
     // FIXME: make issuer methods internal
-    function _registerCredential(address subject, bytes32 digest, bytes32 eRoot, address[] memory witnesses)
-        internal
-        onlyOwner
-        notRevoked(digest)
-    {
+    function _registerCredential(
+        address subject,
+        bytes32 digest,
+        bytes32 eRoot,
+        address[] memory witnesses
+    ) internal onlyOwner notRevoked(digest) {
         require(!isOwner(subject), "Issuer/forbidden registrar");
         _tree._issue(subject, digest, eRoot, witnesses);
     }

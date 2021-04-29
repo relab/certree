@@ -27,7 +27,7 @@ contract Node is NodeInterface, Issuer, ERC165 {
         _role = role;
     }
 
-    function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
+    function supportsInterface(bytes4 interfaceId) override external pure returns (bool) {
         return interfaceId == type(ERC165).interfaceId || interfaceId == type(NodeInterface).interfaceId;
     }
 
