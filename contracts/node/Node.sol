@@ -17,7 +17,7 @@ contract Node is NodeInterface, Issuer, ERC165 {
 
     address[] internal _children;
 
-    mapping(address => bool) public isChild;
+    mapping(address => bool) internal _isChild;
 
     constructor(Role role, address[] memory registrars, uint8 quorum)
         Issuer(registrars, quorum)
@@ -36,6 +36,13 @@ contract Node is NodeInterface, Issuer, ERC165 {
      */
     function isLeaf() public view override returns (bool) {
         return _role == Role.Leaf;
+    }
+
+    /**
+     * @notice checks whether the given node is a child of this node.
+     */
+    function isChild(address node) public view override returns (bool) {
+        return _isChild[node];
     }
 
     /**
@@ -82,12 +89,12 @@ contract Node is NodeInterface, Issuer, ERC165 {
     // and there is no easy way to detect it other than going through all children of `nodeAddress` and checking if any reference this.
     function _addNode(address nodeAddress, Role role) private {
         require(address(this) != nodeAddress, "Node/cannot add itself");
-        require(!isChild[nodeAddress], "Node/node already added");
+        require(!_isChild[nodeAddress], "Node/node already added");
         require(
             role == Role.Leaf || role == Role.Inner,
             "Node/invalid child role"
         );
-        isChild[nodeAddress] = true;
+        _isChild[nodeAddress] = true;
         _children.push(nodeAddress);
         emit NodeAdded(msg.sender, nodeAddress, role);
     }
@@ -160,7 +167,7 @@ contract Node is NodeInterface, Issuer, ERC165 {
             for (uint256 i = 0; i < witnesses.length; i++) {
                 address nodeAddress = address(witnesses[i]);
                 require(
-                    isChild[nodeAddress],
+                    _isChild[nodeAddress],
                     "Node/address not authorized"
                 );
                 bool isNodeLike = ERC165Checker.supportsInterface(
@@ -312,7 +319,7 @@ contract Node is NodeInterface, Issuer, ERC165 {
         for (uint256 i = 0; i < witnesses.length; i++) {
             address witnessesAddress = address(witnesses[i]);
             require(
-                isChild[witnessesAddress],
+                _isChild[witnessesAddress],
                 "Node/address not authorized"
             );
             bool isNodeLike = ERC165Checker.supportsInterface(

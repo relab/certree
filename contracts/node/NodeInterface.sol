@@ -23,6 +23,11 @@ interface NodeInterface {
     function isLeaf() external view returns (bool);
 
     /**
+     * @notice checks whether the given node is a child of this node.
+     */
+    function isChild(address) external view returns (bool);
+
+    /**
      * @return the address of the parent of this node.
      */
     function myParent() external view returns (address);
