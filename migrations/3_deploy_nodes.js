@@ -7,15 +7,15 @@ var Leaf = artifacts.require("LeafMock");
 var Inner = artifacts.require("InnerMock");
 
 module.exports = async function (deployer, network, accounts) {
-    const [issuer1, issuer2] = accounts;
+    const [registrar1, registrar2] = accounts;
 
     console.log(`--- Deploying leaf at ${network} network ---`);
     await deployer.link(CredentialSumLib, Leaf);
     await deployer.link(NotaryLib, Leaf);
-    await deployer.deploy(Leaf, [issuer1, issuer2], 2);
+    await deployer.deploy(Leaf, [registrar1, registrar2], 2);
 
     console.log(`--- Deploying inner at ${network} network ---`);
     await deployer.link(CredentialSumLib, Inner);
     await deployer.link(NotaryLib, Inner);
-    await deployer.deploy(Inner, [issuer1, issuer2], 2);
+    await deployer.deploy(Inner, [registrar1, registrar2], 2);
 };

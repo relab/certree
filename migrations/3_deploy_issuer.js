@@ -6,10 +6,10 @@ var CredentialSumLib = artifacts.require("CredentialSum");
 var Issuer = artifacts.require("IssuerMock");
 
 module.exports = async function (deployer, network, accounts) {
-    const [issuer1, issuer2] = accounts;
+    const [registrar1, registrar2] = accounts;
 
     console.log(`--- Deploying issuer at ${network} network ---`);
     await deployer.link(NotaryLib, Issuer);
     await deployer.link(CredentialSumLib, Issuer);
-    await deployer.deploy(Issuer, [issuer1, issuer2], 2);
+    await deployer.deploy(Issuer, [registrar1, registrar2], 2);
 };
