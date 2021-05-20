@@ -1,6 +1,6 @@
 {
   "name": "ct-eth",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Ethereum Credential Transparency",
   "directories": {
     "test": "test"
