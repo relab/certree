@@ -1,6 +1,6 @@
 {
-  "name": "ct-eth",
-  "version": "0.1.2",
+  "name": "certree",
+  "version": "0.2.0",
   "description": "Ethereum Credential Transparency",
   "directories": {
     "test": "test"
