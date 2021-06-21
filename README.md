@@ -1,4 +1,4 @@
-# Credential Transparency
+# Certification Tree
 
 Install and start a test chain.
 ```
