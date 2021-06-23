@@ -1,0 +1,60 @@
+name: Tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 15.x
+      - uses: actions/cache@v2
+        id: cache
+        with:
+          path: '**/node_modules'
+          key: npm-pkgs-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: npm-pkgs-
+      - name: install packages
+        run: npm ci
+        if: steps.cache.outputs.cache-hit != 'true'
+      - name: run lint
+        run: npm run lint
+      - name: start ganache
+        run: |
+          npm run ganache-cli > /dev/null &
+          while netstat -lnt | awk '$4 ~ /:7545$/ {exit 1}'; do sleep 5; done
+      - name: run tests
+        run: npm run test:ganache
+      - name: stop ganache
+        run: kill $(lsof -t -i:7545)
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 15.x
+      - uses: actions/cache@v2
+        id: cache
+        with:
+          path: '**/node_modules'
+          key: npm-pkgs-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: npm-pkgs-
+      - run: npm ci
+        if: steps.cache.outputs.cache-hit != 'true'
+      - run: npm run coverage
+        env:
+          NODE_OPTIONS: --max_old_space_size=4096
+      - uses: codecov/codecov-action@v1
+
