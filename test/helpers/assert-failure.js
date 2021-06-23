@@ -2,7 +2,7 @@
 
 const { expect } = require('chai');
 
-async function assertFailure(promise) {
+async function assertFailure (promise) {
     try {
         await promise;
     } catch (error) {

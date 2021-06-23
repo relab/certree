@@ -29,8 +29,8 @@ contract('Issuer', accounts => {
     });
 
     describe('getters', () => {
-        let issuer1, issuer2 = null;
-        let timestamp, block = 0;
+        let issuer1; let issuer2 = null;
+        let timestamp; let block = 0;
         const expectedRoot = hashByteArray([digest1, digest2]);
 
         before(async () => {
@@ -80,7 +80,7 @@ contract('Issuer', accounts => {
         it('should successfully retrieve all revoked digests', async () => {
             await issuer1.revokeCredential(digest2, reason, { from: registrar1 });
 
-            let rc = await issuer1.revokedCounter(subject1);
+            const rc = await issuer1.revokedCounter(subject1);
             expect(rc).to.be.bignumber.equal(new BN(1));
 
             const revoked = await issuer1.getRevoked(subject1);
@@ -173,16 +173,16 @@ contract('Issuer', accounts => {
                 // Fail when try to register a credential at same timestamp of the previous
                 await expectRevert(
                     issuer.registerCredential(subject1, digest2, constants.ZERO_BYTES32, [], { from: registrar1 }),
-                    "Notary/timestamp violation"
+                    'Notary/timestamp violation'
                 );
             });
         });
 
         describe('events', () => {
             it('should emit an issued and a signed event when a credential proof is registered', async () => {
-                let { logs } = await issuer.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar1 });
+                const { logs } = await issuer.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar1 });
 
-                let block = await time.latestBlock();
+                const block = await time.latestBlock();
                 expectEvent.inLogs(logs, 'CredentialIssued', {
                     digest: digest1,
                     subject: subject1,
@@ -198,9 +198,9 @@ contract('Issuer', accounts => {
 
             it('should emit a signed event when a credential proof is signed by a registrar', async () => {
                 await issuer.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar1 });
-                let { logs } = await issuer.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar2 });
+                const { logs } = await issuer.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar2 });
 
-                let block = await time.latestBlock();
+                const block = await time.latestBlock();
                 expectEvent.inLogs(logs, 'CredentialSigned', {
                     signer: registrar2,
                     digest: digest1,
@@ -221,7 +221,6 @@ contract('Issuer', accounts => {
         });
 
         describe('normal behaviour', () => {
-
             it('should compute a quorum of registrar signatures', async () => {
                 await issuer.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar1 });
                 await issuer.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar2 });
@@ -245,7 +244,7 @@ contract('Issuer', accounts => {
             });
 
             it('should return an array of zero address if there is no registrars\' signatures', async () => {
-                let signers = await issuer.getCredentialSigners(digest1);
+                const signers = await issuer.getCredentialSigners(digest1);
                 (signers.length).should.equal(owners.length);
                 for (let i = 0; i < signers.length; i++) {
                     (signers[i]).should.equal(constants.ZERO_ADDRESS);
@@ -257,7 +256,7 @@ contract('Issuer', accounts => {
                 await issuer.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar1 });
                 await issuer.registerCredential(subject1, digest1, constants.ZERO_BYTES32, [], { from: registrar2 });
 
-                let signers = await issuer.getCredentialSigners(digest1);
+                const signers = await issuer.getCredentialSigners(digest1);
                 (signers.length).should.equal(owners.length);
                 expect(signers).to.be.an('array').that.does.not.include(registrar3);
                 expect(signers).to.include.ordered.members([registrar1, registrar2]);
@@ -269,7 +268,6 @@ contract('Issuer', accounts => {
 
     describe('approval', () => {
         describe('normal behaviour', () => {
-
             beforeEach(async () => {
                 // Require 2 signatures/approval out of 3 owners
                 issuer = await Issuer.new([registrar1, registrar2, registrar3], 2);
@@ -364,7 +362,7 @@ contract('Issuer', accounts => {
                     signedBlock: lastBlockNumber
                 });
 
-                const eventList = await issuer.getPastEvents("allEvents", { fromBlock: previousBlockNumber, toBlock: lastBlockNumber });
+                const eventList = await issuer.getPastEvents('allEvents', { fromBlock: previousBlockNumber, toBlock: lastBlockNumber });
                 (eventList.length).should.equal(4);
             });
         });
@@ -499,7 +497,6 @@ contract('Issuer', accounts => {
         });
 
         describe('normal behaviour', () => {
-
             it('should check the root proof', async () => {
                 await issuer.aggregateCredentials(subject1, digests);
                 (await issuer.verifyRootOf(subject1, digests)).should.equal(true);
@@ -623,7 +620,7 @@ contract('Issuer', accounts => {
             await issuer.approveCredential(digest1, { from: subject1 });
 
             const aggregated = await issuer.aggregateCredentials.call(subject1, [digest1]);
-            let expected = hashByteArray([digest1]);
+            const expected = hashByteArray([digest1]);
 
             (aggregated).should.equal(expected);
         });

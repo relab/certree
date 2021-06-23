@@ -1,7 +1,7 @@
 {
   "name": "certree",
   "version": "0.2.0",
-  "description": "Ethereum Credential Transparency",
+  "description": "Certification Tree",
   "directories": {
     "test": "test"
   },
@@ -14,8 +14,8 @@
     "test:gas": "truffle test --network ganache test/gas-report/*.js",
     "coverage": "truffle run coverage --file=\"test/*.js\" --network ganache",
     "lint": "npm run lint:js && npm run lint:sol",
-    "lint:js": "eslint .",
-    "lint:js:fix": "eslint . --fix",
+    "lint:js": "eslint --ignore-path .gitignore .",
+    "lint:js:fix": "eslint --ignore-path .gitignore . --fix",
     "lint:sol": "solhint --max-warnings 0 \"contracts/**/*.sol\" --fix",
     "sol2uml": "sol2uml ./contracts -b Node -o Node.svg",
     "ganache-cli": "ganache-cli --deterministic --networkId 5777 --host 127.0.0.1 --port 7545",

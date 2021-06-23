@@ -56,15 +56,15 @@ contract('Owners', accounts => {
         });
 
         it('should revert if the newOwner is already an owner', async () => {
-            await expectRevert(contract.changeOwner(owner2, { from: owner1 }), "Owners/invalid address given");
+            await expectRevert(contract.changeOwner(owner2, { from: owner1 }), 'Owners/invalid address given');
         });
 
         it('should revert if the given address is invalid', async () => {
-            await expectRevert(contract.changeOwner(constants.ZERO_ADDRESS, { from: owner1 }), "Owners/invalid address given");
+            await expectRevert(contract.changeOwner(constants.ZERO_ADDRESS, { from: owner1 }), 'Owners/invalid address given');
         });
 
         it('should emit an event when changing owner', async () => {
-            let { logs } = await contract.changeOwner(owner3, { from: owner1 })
+            const { logs } = await contract.changeOwner(owner3, { from: owner1 });
             expectEvent.inLogs(logs, 'OwnerChanged', {
                 oldOwner: owner1,
                 newOwner: owner3

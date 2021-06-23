@@ -13,7 +13,7 @@ const INNER_ROLE = new BN(1);
 
 contract('Node', accounts => {
     const [registrar1, registrar2, registrar3, subject, verifier, other, deployer] = accounts;
-    let inner, leaf = null;
+    let inner; let leaf = null;
     const digest = hash(web3.utils.toHex('root-certificates'));
 
     describe('constructor', () => {
@@ -69,7 +69,7 @@ contract('Node', accounts => {
 
         it('should not add an address that is not a contract', async () => {
             await assertFailure(
-                inner.addChild("0xE11BA2b4D45Eaed5996Cd0823791E0C93114882d", { from: registrar1 })
+                inner.addChild('0xE11BA2b4D45Eaed5996Cd0823791E0C93114882d', { from: registrar1 })
             );
         });
 
@@ -89,7 +89,7 @@ contract('Node', accounts => {
 
         it('should revert if given address is not valid', async () => {
             await expectRevert(
-                inner.addChild("0x0000NOT0A0ADDRESS000000", { from: registrar1 }),
+                inner.addChild('0x0000NOT0A0ADDRESS000000', { from: registrar1 }),
                 'invalid address'
             );
         });
@@ -101,7 +101,7 @@ contract('Node', accounts => {
 
         beforeEach(async () => {
             inner = await Inner.new([registrar1, registrar2], 2);
-            let l = await createNotary("leaf", registrar1, [registrar3]);
+            const l = await createNotary('leaf', registrar1, [registrar3]);
             await inner.addChild(l.address, { from: registrar1 });
 
             witnesses = await generateLeafCredentials([l], [subject], 4);
@@ -112,7 +112,7 @@ contract('Node', accounts => {
             [evidenceRoot, aggregationPerWitness] = await aggregateSubTree(witnesses, subject);
             await inner.registerCredential(subject, digest, wAddresses, { from: registrar1 });
 
-            let c = await inner.getCredentialProof(digest);
+            const c = await inner.getCredentialProof(digest);
             (c.evidenceRoot).should.equal(evidenceRoot);
             expect(await inner.getWitnesses(digest)).to.have.same.members(wAddresses);
         });
@@ -133,7 +133,7 @@ contract('Node', accounts => {
         it('should revert if some of the leaves isn\'t aggregated', async () => {
             await expectRevert(
                 inner.registerCredential(subject, digest, wAddresses, { from: registrar1 }),
-                "Node/root not found"
+                'Node/root not found'
             );
         });
 
@@ -145,10 +145,10 @@ contract('Node', accounts => {
         });
 
         it('should revert for unauthorized leaf', async () => {
-            let unauthorized = await Leaf.new([registrar1], 1);
+            const unauthorized = await Leaf.new([registrar1], 1);
             await expectRevert(
                 inner.registerCredential(subject, digest, [unauthorized.address], { from: registrar1 }),
-                "Node/address not authorized"
+                'Node/address not authorized'
             );
         });
     });
@@ -159,7 +159,7 @@ contract('Node', accounts => {
 
         before(async () => {
             inner = await Inner.new([registrar1], 1);
-            let l = await createNotary("leaf", registrar1, [registrar2]);
+            const l = await createNotary('leaf', registrar1, [registrar2]);
             await inner.addChild(l.address, { from: registrar1 });
             witnesses = await generateLeafCredentials([l], [subject], 4);
             wAddresses = Object.keys(witnesses);
@@ -173,7 +173,7 @@ contract('Node', accounts => {
 
         it('should aggregate credentials on root contract', async () => {
             await inner.aggregateCredentials(subject, [digest], { from: registrar1 });
-            let rootProof = await inner.getRoot(subject);
+            const rootProof = await inner.getRoot(subject);
             (rootProof).should.equal(hashByteArray([digest]));
         });
     });
@@ -185,7 +185,7 @@ contract('Node', accounts => {
         beforeEach(async () => {
             inner = await Inner.new([registrar1], 1);
 
-            let leaves = await createLeaves(inner, registrar1, [[registrar2], [registrar3]]);
+            const leaves = await createLeaves(inner, registrar1, [[registrar2], [registrar3]]);
 
             // Generate credentials on leaves
             witnesses = await generateLeafCredentials(leaves, [subject], 4);
@@ -212,7 +212,7 @@ contract('Node', accounts => {
             (await inner.verifyCredentialTree(subject)).should.equal(true);
         });
 
-        //TODO: add corner cases tests
+        // TODO: add corner cases tests
     });
 
     describe('revoke', () => {
@@ -223,7 +223,7 @@ contract('Node', accounts => {
         beforeEach(async () => {
             inner = await Inner.new([registrar1], 1);
 
-            let leaves = await createLeaves(inner, registrar1, [[registrar2], [registrar3]]);
+            const leaves = await createLeaves(inner, registrar1, [[registrar2], [registrar3]]);
 
             // Generate credentials on leaves
             witnesses = await generateLeafCredentials(leaves, [subject], 4);
@@ -242,7 +242,7 @@ contract('Node', accounts => {
 
             const revocation = await inner.getRevokedProof(digest);
             expect(await time.latestBlock()).to.be.bignumber.equal(new BN(revocation.revokedBlock));
-            assert.equal(revocation.registrar, registrar1)
+            assert.equal(revocation.registrar, registrar1);
             assert.equal(revocation.reason, reason);
             assert.equal(revocation.subject, subject);
         });
