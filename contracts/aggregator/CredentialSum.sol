@@ -54,12 +54,7 @@ library CredentialSum {
         return root;
     }
 
-    function computeRoot(bytes32[] memory digests)
-        public
-        pure
-        notEmpty(digests)
-        returns (bytes32)
-    {
+    function computeRoot(bytes32[] memory digests) public pure notEmpty(digests) returns (bytes32) {
         // FIXME: consider use sha256(abi.encode(digests));
         return keccak256(abi.encode(digests));
     }
@@ -68,12 +63,7 @@ library CredentialSum {
      * @dev verifySelfRoot checks if the stored root was generated using
      * the given list of digests
      */
-    function verifySelfRoot(Root storage self, bytes32[] memory digests)
-        public
-        view
-        rootExists(self)
-        returns (bool)
-    {
+    function verifySelfRoot(Root storage self, bytes32[] memory digests) public view rootExists(self) returns (bool) {
         return (self.proof == computeRoot(digests));
     }
 
@@ -81,11 +71,7 @@ library CredentialSum {
      * @dev verifyRoot checks if the given list of digests generates the
      * given root
      */
-    function verifyRoot(bytes32 root, bytes32[] calldata digests)
-        public
-        pure
-        returns (bool)
-    {
+    function verifyRoot(bytes32 root, bytes32[] calldata digests) public pure returns (bool) {
         return (root == computeRoot(digests));
     }
 }

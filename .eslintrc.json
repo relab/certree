@@ -28,7 +28,7 @@
     "generator-star-spacing": ["error", "before"],
     "indent": ["error", 4],
     "linebreak-style": ["error", "unix"],
-    "max-len": ["error", 120, 2],
+    "max-len": ["warn", 120, 2],
     "no-debugger": "off",
     "no-dupe-args": "error",
     "no-dupe-keys": "error",
@@ -40,7 +40,7 @@
     "no-var": "error",
     "object-curly-spacing": ["error", "always"],
     "prefer-const": "error",
-    "quotes": ["error", "single"],
+    "quotes": ["error", "double"],
     "semi": ["error", "always"],
 
     "mocha-no-only/mocha-no-only": ["error"],

@@ -8,19 +8,15 @@ import "./Timed.sol";
  * @title An Issuer Implementation
  */
 contract TimedIssuer is Timed, Issuer {
-
     /**
-    * @notice Constructor creates a Issuer contract
-    */
+     * @notice Constructor creates a Issuer contract
+     */
     constructor(
         address[] memory owners,
         uint8 quorum,
         uint256 startingTime,
         uint256 endingTime
-    )
-        Timed(startingTime, endingTime)
-        Issuer(owners, quorum)
-    {
+    ) Timed(startingTime, endingTime) Issuer(owners, quorum) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -32,22 +28,14 @@ contract TimedIssuer is Timed, Issuer {
     /**
      * @notice register a credential prooffor a given subject
      */
-    function registerCredential(address subject, bytes32 digest)
-        public
-        onlyOwner
-        whileNotEnded
-    {
+    function registerCredential(address subject, bytes32 digest) public onlyOwner whileNotEnded {
         _registerCredential(subject, digest, bytes32(0), new address[](0));
     }
 
     /**
      * @notice generate the root for a given subject
      */
-    function aggregateCredentials(address subject, bytes32[] memory digests)
-        public
-        onlyOwner
-        returns (bytes32)
-    {
+    function aggregateCredentials(address subject, bytes32[] memory digests) public onlyOwner returns (bytes32) {
         require(hasEnded(), "TimedIssuer/period not ended yet");
         return _aggregateCredentials(subject, digests);
     }

@@ -35,15 +35,9 @@ library ERC165Checker {
      *
      * See {IERC165-supportsInterface}.
      */
-    function supportsInterface(address account, bytes4 interfaceId)
-        internal
-        view
-        returns (bool)
-    {
+    function supportsInterface(address account, bytes4 interfaceId) internal view returns (bool) {
         // query support of both ERC165 as per the spec and support of _interfaceId
-        return
-            supportsERC165(account) &&
-            _supportsERC165Interface(account, interfaceId);
+        return supportsERC165(account) && _supportsERC165Interface(account, interfaceId);
     }
 
     /**
@@ -55,10 +49,7 @@ library ERC165Checker {
      *
      * See {IERC165-supportsInterface}.
      */
-    function supportsAllInterfaces(
-        address account,
-        bytes4[] memory interfaceIds
-    ) internal view returns (bool) {
+    function supportsAllInterfaces(address account, bytes4[] memory interfaceIds) internal view returns (bool) {
         // query support of ERC165 itself
         if (!supportsERC165(account)) {
             return false;
@@ -86,17 +77,10 @@ library ERC165Checker {
      * with {supportsERC165}.
      * Interface identification is specified in ERC-165.
      */
-    function _supportsERC165Interface(address account, bytes4 interfaceId)
-        private
-        view
-        returns (bool)
-    {
+    function _supportsERC165Interface(address account, bytes4 interfaceId) private view returns (bool) {
         // success determines whether the staticcall succeeded and result determines
         // whether the contract at account indicates support of _interfaceId
-        (bool success, bool result) = _callERC165SupportsInterface(
-            account,
-            interfaceId
-        );
+        (bool success, bool result) = _callERC165SupportsInterface(account, interfaceId);
 
         return (success && result);
     }
@@ -109,18 +93,9 @@ library ERC165Checker {
      * @return result true if the STATICCALL succeeded and the contract at account
      * indicates support of the interface with identifier interfaceId, false otherwise
      */
-    function _callERC165SupportsInterface(address account, bytes4 interfaceId)
-        private
-        view
-        returns (bool, bool)
-    {
-        bytes memory encodedParams = abi.encodeWithSelector(
-            _INTERFACE_ID_ERC165,
-            interfaceId
-        );
-        (bool success, bytes memory result) = account.staticcall{gas: 30000}(
-            encodedParams
-        );
+    function _callERC165SupportsInterface(address account, bytes4 interfaceId) private view returns (bool, bool) {
+        bytes memory encodedParams = abi.encodeWithSelector(_INTERFACE_ID_ERC165, interfaceId);
+        (bool success, bytes memory result) = account.staticcall{gas: 30000}(encodedParams);
         if (result.length < 32) return (false, false);
         return (success, abi.decode(result, (bool)));
     }

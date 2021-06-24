@@ -4,11 +4,9 @@ pragma solidity >=0.8.0 <0.9.0;
 import "../notary/Issuer.sol";
 
 contract IssuerMock is Issuer {
-    uint public balance;
+    uint256 public balance;
 
-    constructor(address[] memory registrars, uint8 quorum)
-        Issuer(registrars, quorum)
-    {
+    constructor(address[] memory registrars, uint8 quorum) Issuer(registrars, quorum) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -26,36 +24,16 @@ contract IssuerMock is Issuer {
         balance += msg.value;
     }
 
-    function getBalance() public view returns (uint256) {
-        return address(this).balance;
-    }
-
-    function getRoot(address subject)
-        public
-        view
-        returns (bytes32)
-    {
-        return _getRoot(subject);
-    }
-
-    function verifyCredentialRoot(address subject, bytes32 root)
-        public
-        view
-        returns (bool)
-    {
-        return _verifyCredentialRoot(subject, root);
-    }
-
-    function registerCredential(address subject, bytes32 digest, bytes32 eRoot, address[] memory witnesses)
-        public
-    {
+        function registerCredential(
+        address subject,
+        bytes32 digest,
+        bytes32 eRoot,
+        address[] memory witnesses
+    ) public {
         _registerCredential(subject, digest, eRoot, witnesses);
     }
 
-    function aggregateCredentials(address subject, bytes32[] memory digests)
-        public
-        returns (bytes32)
-    {
+    function aggregateCredentials(address subject, bytes32[] memory digests) public returns (bytes32) {
         return _aggregateCredentials(subject, digests);
     }
 
@@ -66,4 +44,17 @@ contract IssuerMock is Issuer {
     function revokeCredential(bytes32 digest, bytes32 reason) public {
         _revokeCredential(digest, reason);
     }
+
+    function getBalance() public view returns (uint256) {
+        return address(this).balance;
+    }
+
+    function getRoot(address subject) public view returns (bytes32) {
+        return _getRoot(subject);
+    }
+
+    function verifyCredentialRoot(address subject, bytes32 root) public view returns (bool) {
+        return _verifyCredentialRoot(subject, root);
+    }
+
 }

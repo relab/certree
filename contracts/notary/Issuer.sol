@@ -39,11 +39,7 @@ abstract contract Issuer is Owners {
     );
 
     // Logged when a credential is signed.
-    event CredentialSigned(
-        address indexed signer,
-        bytes32 indexed digest,
-        uint256 signedBlock
-    );
+    event CredentialSigned(address indexed signer, bytes32 indexed digest, uint256 signedBlock);
 
     modifier notRevoked(bytes32 digest) {
         require(!isRevoked(digest), "Issuer/credential revoked");
@@ -51,16 +47,11 @@ abstract contract Issuer is Owners {
     }
 
     modifier hasIssuedCredentials(address subject) {
-        require(
-            _tree.issued[subject].length > 0,
-            "Issuer/there are no credentials"
-        );
+        require(_tree.issued[subject].length > 0, "Issuer/there are no credentials");
         _;
     }
 
-    constructor(address[] memory registrars, uint8 quorum)
-        Owners(registrars, quorum)
-    {
+    constructor(address[] memory registrars, uint8 quorum) Owners(registrars, quorum) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -68,11 +59,7 @@ abstract contract Issuer is Owners {
      * @param subject The subject of the credential
      * @return the list of the issued credentials' digests of a subject
      */
-    function getDigests(address subject)
-        public
-        view
-        returns (bytes32[] memory)
-    {
+    function getDigests(address subject) public view returns (bytes32[] memory) {
         return _tree.issued[subject];
     }
 
@@ -80,11 +67,7 @@ abstract contract Issuer is Owners {
      * @param digest The digest of the credential
      * @return the registered credential proof
      */
-    function getCredentialProof(bytes32 digest)
-        public
-        view
-        returns (Notary.CredentialProof memory)
-    {
+    function getCredentialProof(bytes32 digest) public view returns (Notary.CredentialProof memory) {
         return _tree.getCredentialProof(digest);
     }
 
@@ -92,11 +75,7 @@ abstract contract Issuer is Owners {
      * @param digest The digest of the credential
      * @return the revoked credential proof
      */
-    function getRevokedProof(bytes32 digest)
-        public
-        view
-        returns (Notary.RevocationProof memory)
-    {
+    function getRevokedProof(bytes32 digest) public view returns (Notary.RevocationProof memory) {
         return _tree.getRevokedProof(digest);
     }
 
@@ -107,11 +86,7 @@ abstract contract Issuer is Owners {
      * meaning that some of the owners did not signed the
      * credential yet.
      */
-    function getCredentialSigners(bytes32 digest)
-        public
-        view
-        returns (address[] memory)
-    {
+    function getCredentialSigners(bytes32 digest) public view returns (address[] memory) {
         address[] memory signers = new address[](_owners.length);
         uint256 index = 0;
         uint256 i = 0;
@@ -128,11 +103,7 @@ abstract contract Issuer is Owners {
      * @notice verify if a credential proof was signed by a quorum
      * @param digest The digest of the credential
      */
-    function isQuorumSigned(bytes32 digest)
-        public
-        view
-        returns (bool)
-    {
+    function isQuorumSigned(bytes32 digest) public view returns (bool) {
         return _tree.isQuorumSigned(digest, _quorum);
     }
 
@@ -142,11 +113,7 @@ abstract contract Issuer is Owners {
      * @param digest The digest of the credential
      * @param account The registrar's account
      */
-    function isSigned(bytes32 digest, address account)
-        public
-        view
-        returns (bool)
-    {
+    function isSigned(bytes32 digest, address account) public view returns (bool) {
         return _tree.isSigned(digest, account);
     }
 
@@ -154,11 +121,7 @@ abstract contract Issuer is Owners {
      * @param digest The digest of the credential
      * @return the length of the witnesses of an issued credential proof
      */
-    function witnessesLength(bytes32 digest)
-        public
-        view
-        returns (uint256)
-    {
+    function witnessesLength(bytes32 digest) public view returns (uint256) {
         return _tree.records[digest].witnesses.length;
     }
 
@@ -166,11 +129,7 @@ abstract contract Issuer is Owners {
      * @param digest The digest of the credential
      * @return the witnesses of an issued credential proof
      */
-    function getWitnesses(bytes32 digest)
-        public
-        view
-        returns (address[] memory)
-    {
+    function getWitnesses(bytes32 digest) public view returns (address[] memory) {
         return _tree.records[digest].witnesses;
     }
 
@@ -178,11 +137,7 @@ abstract contract Issuer is Owners {
      * @param digest The digest of the credential
      * @return the root of the evidences of an issued credential proof.
      */
-    function getEvidenceRoot(bytes32 digest)
-        public
-        view
-        returns (bytes32)
-    {
+    function getEvidenceRoot(bytes32 digest) public view returns (bytes32) {
         return _tree.records[digest].evidenceRoot;
     }
 
@@ -201,11 +156,7 @@ abstract contract Issuer is Owners {
     // TODO: Implement it as a token?
     // TODO: Return an aggregator interface
     // TODO: Rename function
-    function getProof(address subject)
-        public
-        view
-        returns (CredentialSum.Root memory)
-    {
+    function getProof(address subject) public view returns (CredentialSum.Root memory) {
         return _root[subject];
     }
 
@@ -242,11 +193,7 @@ abstract contract Issuer is Owners {
      */
     // TODO: limit the size of digests to avoid out-of-gas
     // TODO: specify implementation of verifier interface
-    function verifyRootOf(address subject, bytes32[] memory digests)
-        public
-        view
-        returns (bool)
-    {
+    function verifyRootOf(address subject, bytes32[] memory digests) public view returns (bool) {
         return _root[subject].verifySelfRoot(digests);
     }
 
@@ -276,15 +223,9 @@ abstract contract Issuer is Owners {
      * i.e. Stored in a public swarm/ipfs address
      */
     // TODO: require quorum modifier
-    function _revokeCredential(bytes32 digest, bytes32 reason)
-        internal
-        notRevoked(digest)
-    {
+    function _revokeCredential(bytes32 digest, bytes32 reason) internal notRevoked(digest) {
         address subject = _tree.records[digest].subject;
-        require(
-            isOwner(msg.sender) || subject == msg.sender,
-            "Issuer/sender not authorized"
-        );
+        require(isOwner(msg.sender) || subject == msg.sender, "Issuer/sender not authorized");
         _tree._revoke(digest, reason);
     }
 
@@ -302,10 +243,7 @@ abstract contract Issuer is Owners {
     {
         // TODO: Alternatively, consider to hash the credential proofs instead of only the digests, i.e.: sha256(abi.encode(issuedCredentials[issued[i]]));
         // FIXME: the number of digests should be bounded to avoid gas limit on loops
-        require(
-            _tree._verifyProofs(subject, digests),
-            "Issuer/has invalid credentials"
-        );
+        require(_tree._verifyProofs(subject, digests), "Issuer/has invalid credentials");
         return _root[subject].generateRoot(subject, digests);
     }
 
@@ -322,9 +260,7 @@ abstract contract Issuer is Owners {
         returns (bool)
     {
         // Stored root must be derived from current digests of the subject
-        return
-            _root[subject].verifySelfRoot(_tree.issued[subject]) &&
-            _root[subject].proof == root;
+        return _root[subject].verifySelfRoot(_tree.issued[subject]) && _root[subject].proof == root;
     }
 
     /**
@@ -335,12 +271,7 @@ abstract contract Issuer is Owners {
      * any credentials there was not approved.
      */
     // TODO: Add period verification
-    function verifyIssuedCredentials(address subject)
-        public
-        view
-        hasIssuedCredentials(subject)
-        returns (bool)
-    {
+    function verifyIssuedCredentials(address subject) public view hasIssuedCredentials(subject) returns (bool) {
         return _tree._verifyIssuedCredentials(subject);
     }
 
@@ -351,11 +282,7 @@ abstract contract Issuer is Owners {
      * @param subject The subject of the credential
      * @param digest The digest of the credential
      */
-    function verifyCredential(address subject, bytes32 digest)
-        public
-        view
-        returns (bool)
-    {
+    function verifyCredential(address subject, bytes32 digest) public view returns (bool) {
         return _tree._verifyCredential(subject, digest);
     }
 
@@ -363,12 +290,7 @@ abstract contract Issuer is Owners {
      * @notice returns a list of revoked credentials
      * @param subject The subject that owns the credentials
      */
-    function getRevoked(address subject)
-        public
-        view
-        hasIssuedCredentials(subject)
-        returns (bytes32[] memory)
-    {
+    function getRevoked(address subject) public view hasIssuedCredentials(subject) returns (bytes32[] memory) {
         bytes32[] memory revoked = new bytes32[](_tree.revokedCounter[subject]);
         uint256 index = 0;
         uint256 i = 0;
@@ -385,11 +307,7 @@ abstract contract Issuer is Owners {
      * @notice returns the number of revoked credentials for a subject
      * @param subject The subject that owns the credentials
      */
-    function revokedCounter(address subject)
-        public
-        view
-        returns (uint256)
-    {
+    function revokedCounter(address subject) public view returns (uint256) {
         return _tree.revokedCounter[subject];
     }
 

@@ -5,9 +5,7 @@ import "../node/Leaf.sol";
 import "./IssuerMock.sol";
 
 contract LeafMock is Leaf {
-    constructor(address[] memory registrars, uint8 quorum)
-        Leaf(registrars, quorum)
-    {
+    constructor(address[] memory registrars, uint8 quorum) Leaf(registrars, quorum) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -18,5 +16,4 @@ contract LeafMock is Leaf {
     function resetRoot(address subject) public {
         IssuerMock(address(this)).resetRoot(subject);
     }
-
 }

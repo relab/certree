@@ -14,29 +14,25 @@ contract AnchorRegistry is Anchor, Owners {
     }
 
     struct RevocationRecord {
-        address resolver; 
+        address resolver;
         uint256 revokedBlock;
         bytes32 reason;
     }
 
-    mapping(bytes32 => IssuanceRecord) private issued;
-    mapping(bytes32 => RevocationRecord) private revoked;
+    mapping(bytes32 => IssuanceRecord) private _issued;
+    mapping(bytes32 => RevocationRecord) private _revoked;
 
-    constructor(address[] memory registrars, uint8 quorum)
-        Owners(registrars, quorum) {
-            // solhint-disable-previous-line no-empty-blocks
+    constructor(address[] memory registrars, uint8 quorum) Owners(registrars, quorum) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function issue(bytes32 rootDigest, address issuerAddress) public override onlyOwner {
         require(!recordExists(rootDigest), "record already issued");
         require(!recordRevoked(rootDigest), "record revoked");
-        require(issuerAddress != address(0x0),"sender cannot be 0");
-        bool isNodeLike = ERC165Checker.supportsInterface(
-            issuerAddress,
-            type(NodeInterface).interfaceId
-        );
+        require(issuerAddress != address(0x0), "sender cannot be 0");
+        bool isNodeLike = ERC165Checker.supportsInterface(issuerAddress, type(NodeInterface).interfaceId);
         require(isNodeLike, "issuer is not a notary node");
-        issued[rootDigest] = IssuanceRecord(
+        _issued[rootDigest] = IssuanceRecord(
             issuerAddress,
             block.number,
             block.timestamp // solhint-disable-line not-rely-on-time
@@ -46,24 +42,20 @@ contract AnchorRegistry is Anchor, Owners {
 
     function revoke(bytes32 rootDigest, bytes32 reason) public override onlyOwner {
         require(recordExists(rootDigest), "record not found");
-        IssuanceRecord storage record = issued[rootDigest];
-        revoked[rootDigest] = RevocationRecord(
-            record.resolver,
-            block.number,
-            reason
-        );
+        IssuanceRecord storage record = _issued[rootDigest];
+        _revoked[rootDigest] = RevocationRecord(record.resolver, block.number, reason);
         emit RecordRevoked(rootDigest, reason, msg.sender, block.number);
     }
 
     function resolver(bytes32 root) public view override returns (address) {
-        return issued[root].resolver;
+        return _issued[root].resolver;
     }
 
     function recordExists(bytes32 root) public view override returns (bool) {
-        return issued[root].insertedBlock != 0;
+        return _issued[root].insertedBlock != 0;
     }
 
     function recordRevoked(bytes32 root) public view override returns (bool) {
-        return revoked[root].revokedBlock != 0;
+        return _revoked[root].revokedBlock != 0;
     }
 }

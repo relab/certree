@@ -23,18 +23,12 @@ abstract contract Timed {
      * @notice Reverts if not in Issuer time range.
      */
     modifier onlyAfterStart {
-        require(
-            isStarted(),
-            "Timed/period not started yet"
-        );
+        require(isStarted(), "Timed/period not started yet");
         _;
     }
 
     modifier whileNotEnded {
-        require(
-            stillRunning(),
-            "Timed/period has already ended"
-        );
+        require(stillRunning(), "Timed/period has already ended");
         _;
     }
 
@@ -48,10 +42,7 @@ abstract contract Timed {
             startTime >= block.timestamp,
             "Timed/time in the past"
         );
-        require(
-            endTime > startTime,
-            "Timed/wrong time range"
-        );
+        require(endTime > startTime, "Timed/wrong time range");
 
         _startingTime = startTime;
         _endingTime = endTime;
@@ -101,10 +92,7 @@ abstract contract Timed {
      * @param newEndingTime the new Issuer ending time
      */
     function _extendTime(uint256 newEndingTime) internal whileNotEnded {
-        require(
-            newEndingTime > _endingTime,
-            "Timed/wrong time range"
-        );
+        require(newEndingTime > _endingTime, "Timed/wrong time range");
 
         emit PeriodExtended(_endingTime, newEndingTime);
         _endingTime = newEndingTime;

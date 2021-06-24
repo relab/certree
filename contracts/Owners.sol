@@ -3,9 +3,8 @@ pragma solidity >=0.8.0 <0.9.0;
 
 /**
  * @title Owners contract
-*/
+ */
 contract Owners {
-
     // The required number of owners to authorize actions
     uint8 internal _quorum;
 
@@ -13,7 +12,7 @@ contract Owners {
     uint8 internal _ownersCount;
 
     // Max number of owners
-    uint8 private constant MAX_OWNERS = (2**8) - 1;
+    uint8 private constant _MAX_OWNERS = (2**8) - 1;
 
     // List of owners
     address[] internal _owners;
@@ -35,14 +34,8 @@ contract Owners {
      * @param quorumSize is the required number of owners to perform actions
      */
     constructor(address[] memory ownersList, uint8 quorumSize) {
-        require(
-            ownersList.length > 0 && ownersList.length <= MAX_OWNERS,
-            "Owners/not enough owners"
-        );
-        require(
-            quorumSize > 0 && quorumSize <= ownersList.length,
-            "Owners/quorum out of range"
-        );
+        require(ownersList.length > 0 && ownersList.length <= _MAX_OWNERS, "Owners/not enough owners");
+        require(quorumSize > 0 && quorumSize <= ownersList.length, "Owners/quorum out of range");
         for (uint8 i = 0; i < ownersList.length; ++i) {
             // prevent duplicate and zero value address attack
             assert(!_isOwner[ownersList[i]] && ownersList[i] != address(0x0));
@@ -56,40 +49,28 @@ contract Owners {
     /**
      * @return the list of owners
      */
-    function owners()
-        public
-        view
-        returns (address[] memory)
-    {
+    function owners() public view returns (address[] memory) {
         return _owners;
     }
 
     /**
      * @return the quorum size
      */
-    function quorum()
-        public
-        view
-        returns (uint8)
-    {
+    function quorum() public view returns (uint8) {
         return _quorum;
     }
 
     /**
      * @return checks whether an account is owner
      */
-    function isOwner(address account) public view returns(bool) {
+    function isOwner(address account) public view returns (bool) {
         return _isOwner[account];
     }
 
     /**
      * @return the total number of owners
      */
-    function ownersCount()
-        public
-        view
-        returns (uint8)
-    {
+    function ownersCount() public view returns (uint8) {
         return _ownersCount;
     }
 
@@ -99,12 +80,9 @@ contract Owners {
      * @param newOwner address of new owner
      */
     function changeOwner(address newOwner) public onlyOwner {
-        require(
-            !_isOwner[newOwner] && newOwner != address(0x0),
-            "Owners/invalid address given"
-        );
+        require(!_isOwner[newOwner] && newOwner != address(0x0), "Owners/invalid address given");
         // Owners should never be empty
-        assert(_owners.length > 0 && _owners.length <= MAX_OWNERS);
+        assert(_owners.length > 0 && _owners.length <= _MAX_OWNERS);
         address[] memory ownersList = new address[](_owners.length);
         // create a new array of owners replacing the old one
         for (uint8 i = 0; i < _owners.length; ++i) {
