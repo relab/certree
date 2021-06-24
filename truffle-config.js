@@ -9,25 +9,42 @@ const envFile = ".env";
 let mnemonic = null;
 let infura_project_id = null;
 let coinmarketcap_apikey = "";
-const data = fs.readFileSync(envFile, "utf8");
+let envData = null;
 
-function parseEnv (param) {
-    const regex = new RegExp(param + "=", "i");
-    const match = data.split("\n").find(line => regex.test(line));
-    if (match) {
-        return match.split("=")[1];
-    }
-    throw new Error("ERROR: Environment variable " + param + " not found on file .env and ROPSTEN_TESTNET is set to " + process.env.ROPSTEN_TESTNET);
-};
+if(fs.existsSync(envFile)) {
+    envData = fs.readFileSync(envFile, "utf8");
+}
 
 if (process.env.ROPSTEN_TESTNET) {
+    console.log("Using ropsten network");
     mnemonic = parseEnv("MNEMONIC");
     infura_project_id = parseEnv("INFURA_PROJECT_ID");
 }
 
 if (process.env.GAS_REPORT) {
+    console.log("Enabling gas report");
     coinmarketcap_apikey = parseEnv("COINMARKETCAP_APIKEY");
 }
+
+function parseEnv (param) {
+    const parsed = parseEnvFile(param);
+    if (parsed === "") {
+        throw new Error(`Environment variable ${param} not found or not set in ${envFile} file. Please create and set it before continue.`);
+    }
+    return parsed;
+}
+
+function parseEnvFile (param) {
+    if (!envData) {
+        return "";
+    }
+    const regex = new RegExp(param + "=", "i");
+    const match = envData.split("\n").find(line => regex.test(line));
+    if (match) {
+        return match.split("=")[1];
+    }
+    return "";
+};
 
 module.exports = {
     networks: {
