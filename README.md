@@ -1,5 +1,8 @@
 # Certification Tree
 
+![Test](https://github.com/relab/certree/actions/workflows/tests.yml/badge.svg)
+[![codecov](https://codecov.io/gh/relab/certree/graph/badge.svg)](https://codecov.io/gh/relab/certree)
+
 Install and start a test chain.
 ```
 npm install
