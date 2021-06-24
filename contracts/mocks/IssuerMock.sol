@@ -24,7 +24,7 @@ contract IssuerMock is Issuer {
         balance += msg.value;
     }
 
-        function registerCredential(
+    function registerCredential(
         address subject,
         bytes32 digest,
         bytes32 eRoot,
@@ -56,5 +56,4 @@ contract IssuerMock is Issuer {
     function verifyCredentialRoot(address subject, bytes32 root) public view returns (bool) {
         return _verifyCredentialRoot(subject, root);
     }
-
 }

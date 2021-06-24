@@ -11,7 +11,7 @@ let infura_project_id = null;
 let coinmarketcap_apikey = "";
 let envData = null;
 
-if(fs.existsSync(envFile)) {
+if (fs.existsSync(envFile)) {
     envData = fs.readFileSync(envFile, "utf8");
 }
 
